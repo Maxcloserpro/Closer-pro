@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traitement des Objections · Closer Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --orange: #E8572A; --orange-light: #FEF0EA; --orange-mid: #FDDDD0;
+    --dark: #0F0F0F; --dark-mid: #1E1E1E; --gray: #6B7280; --gray-light: #9CA3AF;
+    --bg: #FAFAF8; --bg-section: #F4F3F0; --border: #E5E2DB;
+    --purple: #6D28D9; --purple-light: #F5F3FF;
+    --green: #15803D; --green-light: #F0FDF4;
+    --amber: #B45309; --amber-light: #FFFBEB;
+    --red: #B91C1C; --red-light: #FFF5F5;
+    --blue: #1D4ED8; --blue-light: #EFF6FF;
+  }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .page-wrap { max-width: 820px; margin: 0 auto; padding: 0 28px 120px; }
+
+  .site-header { background: var(--dark); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .site-header .brand { font-size: 12px; font-weight: 700; color: #fff; letter-spacing: .1em; text-transform: uppercase; }
+  .site-header .meta { font-size: 11px; color: #6B7280; }
+
+  .doc-nav { display: flex; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .doc-nav a { font-size: 12px; font-weight: 600; color: var(--gray); text-decoration: none; padding: 5px 12px; border-radius: 100px; border: 1px solid var(--border); background: var(--bg-section); transition: all .15s; }
+  .doc-nav a:hover { color: var(--orange); border-color: var(--orange-mid); background: var(--orange-light); }
+
+  .hero { padding: 72px 0 56px; border-bottom: 1px solid var(--border); }
+  .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); margin-bottom: 20px; }
+  .hero h1 { font-family: 'Fraunces', serif; font-size: 52px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; color: var(--dark); margin-bottom: 18px; }
+  .hero-sub { font-size: 18px; color: var(--gray); max-width: 600px; line-height: 1.65; margin-bottom: 32px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 100px; background: var(--bg-section); color: var(--gray); border: 1px solid var(--border); }
+  .tag.accent { background: var(--orange-light); color: var(--orange); border-color: var(--orange-mid); }
+
+  .section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+  .section:last-of-type { border-bottom: none; }
+  .section-num { font-family: 'Fraunces', serif; font-size: 80px; font-weight: 300; color: var(--orange); line-height: 1; margin-bottom: 4px; opacity: .9; }
+  .section-title { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; letter-spacing: -.02em; color: var(--dark); margin-bottom: 6px; }
+  .section-sub { font-size: 13px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 28px; }
+
+  .why-box { background: var(--purple-light); border-left: 3px solid var(--purple); padding: 14px 18px; border-radius: 0 8px 8px 0; margin-bottom: 24px; font-size: 14px; color: var(--purple); font-style: italic; line-height: 1.7; }
+  .why-box strong { font-style: normal; font-weight: 700; }
+
+  .mindset-box { background: var(--green-light); border: 1px solid #BBF7D0; border-radius: 10px; padding: 18px 20px; margin-bottom: 24px; }
+  .mindset-box .mindset-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--green); margin-bottom: 10px; }
+  .mindset-box p { font-size: 14px; color: var(--dark-mid); line-height: 1.7; }
+
+  .alert { padding: 13px 16px; border-radius: 8px; font-size: 13.5px; line-height: 1.65; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert-icon { font-size: 15px; flex-shrink: 0; margin-top: 2px; }
+  .alert.amber { background: var(--amber-light); color: var(--amber); border: 1px solid #FDE68A; }
+  .alert.red { background: var(--red-light); color: var(--red); border: 1px solid #FECACA; }
+  .alert.blue { background: var(--blue-light); color: var(--blue); border: 1px solid #BFDBFE; }
+  .alert.green { background: var(--green-light); color: var(--green); border: 1px solid #BBF7D0; }
+  .alert strong { font-weight: 700; }
+
+  .script-group { margin-bottom: 24px; }
+  .script-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .script-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .script-block { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 0 8px 8px 0; padding: 15px 20px; font-size: 15px; color: var(--dark-mid); line-height: 1.75; white-space: pre-line; margin-bottom: 8px; }
+  .script-block.key { border-left-color: var(--orange); background: var(--orange-light); font-weight: 600; color: var(--dark); }
+  .script-block.green { border-left-color: var(--green); }
+
+  .q-block { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 13px 18px; font-size: 14.5px; color: var(--dark-mid); line-height: 1.65; margin-bottom: 7px; display: flex; align-items: flex-start; gap: 10px; }
+  .q-arrow { color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+
+  .if-block { padding: 9px 14px 9px 16px; border-left: 2px solid var(--gray-light); margin: 6px 0 6px 12px; font-size: 13px; color: var(--gray); font-style: italic; background: var(--bg-section); border-radius: 0 6px 6px 0; line-height: 1.6; }
+  .if-block strong { font-style: normal; color: var(--dark-mid); }
+
+  .close-block { background: var(--dark-mid); border-radius: 10px; padding: 20px 24px; margin-top: 20px; }
+  .close-block .close-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 12px; }
+  .close-block .script-block { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); border-left-color: var(--orange); color: #fff; margin-bottom: 8px; }
+  .close-block .script-block:last-child { margin-bottom: 0; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .split-card { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .split-card-header { padding: 11px 16px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+  .split-card-header.peur { background: var(--red-light); color: var(--red); }
+  .split-card-header.logistique { background: var(--blue-light); color: var(--blue); }
+  .split-card-header.orange { background: var(--orange-light); color: var(--orange); }
+  .split-card-body { padding: 14px 16px; background: #fff; font-size: 13.5px; color: var(--dark-mid); line-height: 1.7; }
+
+  .steps-flow { display: flex; flex-direction: column; gap: 0; margin-bottom: 24px; }
+  .step-flow-item { display: flex; gap: 16px; }
+  .step-flow-left { display: flex; flex-direction: column; align-items: center; width: 32px; flex-shrink: 0; }
+  .step-flow-dot { width: 32px; height: 32px; border-radius: 50%; background: var(--orange); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-flow-line { width: 2px; background: var(--border); flex: 1; min-height: 16px; margin: 4px 0; }
+  .step-flow-content { flex: 1; padding-bottom: 24px; }
+  .step-flow-title { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+
+  .page-footer { text-align: center; padding: 48px 0 20px; border-top: 1px solid var(--border); margin-top: 80px; font-size: 12px; color: var(--gray-light); }
+  .page-footer strong { color: var(--orange); }
+
+  
+
+  /* ── HEADER ── */
+  .site-header {
+    background: #111111 !important;
+    padding: 0 28px !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 200 !important;
+  }
+  .dropdown { position: relative; }
+  .dropdown-btn {
+    font-size: 13px; font-weight: 600; color: #fff;
+    background: #E8572A; border: none; padding: 7px 14px;
+    border-radius: 7px; cursor: pointer; display: flex;
+    align-items: center; gap: 6px;
+  }
+  .dropdown-btn:hover { opacity: .88; }
+  .dropdown-menu {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    background: #fff; border: 1px solid #E5E2DB;
+    border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    min-width: 260px; padding: 8px; display: none; z-index: 9999;
+  }
+  .dropdown.open .dropdown-menu { display: block !important; }
+  .dropdown-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: #9CA3AF; padding: 8px 10px 4px;
+  }
+  .dropdown-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 7px; text-decoration: none;
+    color: #0F0F0F; font-size: 13.5px; font-weight: 500;
+  }
+  .dropdown-item:hover { background: #F4F3F0; }
+  .dropdown-item-icon {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .dropdown-divider { height: 1px; background: #E5E2DB; margin: 6px 0; }
+
+</style>
+</head>
+<body>
+
+    <header class="site-header">
+    <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+      <div style="width:26px;height:26px;background:#E8572A;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;">C</div>
+      <span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.02em;">Closer Pro</span>
+    </a>
+    <div class="dropdown" id="dropdown">
+      <button class="dropdown-btn" onclick="toggleDropdown()">
+        Documents
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-section-label">Méthode</div>
+        <a class="dropdown-item" href="Script_Closing_Pro.html"><div class="dropdown-item-icon" style="background:#FEF0EA">📋</div>Script de Closing</a>
+        <a class="dropdown-item" href="Traitement_Objections.html"><div class="dropdown-item-icon" style="background:#FFF5F5">🛡️</div>Traitement des Objections</a>
+        <a class="dropdown-item" href="Reframing.html"><div class="dropdown-item-icon" style="background:#F5F3FF">🧠</div>Reframing des Prospects</a>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-label">Mindset</div>
+        <a class="dropdown-item" href="Mindset.html"><div class="dropdown-item-icon" style="background:#F0FDF4">🔥</div>Mindset & Croyances</a>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-label">Process</div>
+        <a class="dropdown-item" href="Script_Setting.html"><div class="dropdown-item-icon" style="background:#EFF6FF">📞</div>Script Setting</a>
+        <a class="dropdown-item" href="Process_Challenge.html"><div class="dropdown-item-icon" style="background:#FFFBEB">⚡</div>Process Challenge</a>
+        <a class="dropdown-item" href="Comment_Trouver_une_Offre.html"><div class="dropdown-item-icon" style="background:#F0FDF4">🎯</div>Comment Trouver une Offre</a>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="index.html"><div class="dropdown-item-icon" style="background:#F4F3F0">🏠</div>← Accueil</a>
+      </div>
+    </div>
+  </header>
+
+<div class="page-wrap">
+
+  <div class="doc-nav">
+    <a href="Script_Closing_Pro.html">← Script de Closing</a>
+    <a href="Reframing.html">Reframing →</a>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Document de référence</div>
+    <h1>Traitement des<br>Objections.</h1>
+    <p class="hero-sub">En réalité il n'y a que 2 types d'objections : la peur de se lancer, et le problème logistique (prospect n'a pas les moyens de payer). Il peut aussi y avoir les 2 à la fois.</p>
+    <div class="hero-tags">
+      <span class="tag accent">Objections classiques</span>
+      <span class="tag accent">Traitement de la peur</span>
+      <span class="tag">Traitement logistique</span>
+      <span class="tag">Prospect veut comparer</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 — RECEVOIR L'OBJECTION -->
+  <div class="section">
+    <div class="section-num">1</div>
+    <div class="section-title">Recevoir l'objection</div>
+    <div class="section-sub">La première réaction — toujours</div>
+
+    <div class="why-box">
+      <strong>Objectif :</strong> Accueillir et isoler l'objection. 80% du temps ce seront ces objections qui sortiront en appel : "Je vais y réfléchir", "Je vais en parler à mon mari", "C'est cher". Il y a aussi une 3e objection possible qui doit être traitée différemment : <strong>la concurrence</strong> (le prospect veut comparer).
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Réponse universelle d'accueil</div>
+      <div class="script-block key">"Ok je comprends, c'est une décision importante…"</div>
+    </div>
+
+    <div class="split">
+      <div class="split-card">
+        <div class="split-card-header peur">🔴 Si bon mindset</div>
+        <div class="split-card-body">Le prospect va rapidement lâcher l'objection, à moins qu'il ait un autre call de prévu auquel cas il faudra traiter sans trop forcer et planifier un R2.</div>
+      </div>
+      <div class="split-card">
+        <div class="split-card-header logistique">🟠 Si peur détectée</div>
+        <div class="split-card-body">On va aller au bout du call et on va traiter l'objection à la fin en se battant car il y a moins de 20% de chance si R2.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2 — OBJECTIONS CLASSIQUES -->
+  <div class="section">
+    <div class="section-num">2</div>
+    <div class="section-title">Objections classiques</div>
+    <div class="section-sub">Avant de traiter la peur — identifier ce qui bloque vraiment</div>
+
+    <!-- J'AI BESOIN D'Y RÉFLÉCHIR -->
+    <div class="script-group">
+      <div class="script-label">Je vais y réfléchir / J'aime ne pas prendre de décision sur le coup</div>
+      <div class="why-box">Ici l'objection est un écran de fumée, en réalité notre prospect a peur de se lancer.</div>
+      <div class="script-block key">À quoi tu as besoin de réfléchir ?</div>
+    </div>
+
+    <div class="split" style="margin-bottom:12px">
+      <div class="split-card">
+        <div class="split-card-header peur">C'est quand même une somme</div>
+        <div class="split-card-body">On redirige vers la peur dans le "c'est cher" et on traite comme ça.</div>
+      </div>
+      <div class="split-card">
+        <div class="split-card-header logistique">Je dois en parler à mon mari</div>
+        <div class="split-card-body">On redirige cette fois-ci vers le traitement du "je dois en parler à mon mari".</div>
+      </div>
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">J'aime bien réfléchir — on valide la valeur</div>
+      <div class="q-block"><span class="q-arrow">→</span>"Est-ce que tu ressens que cet accompagnement peut t'aider à atteindre tes objectifs et sortir de ta situation actuelle ? Pourquoi ?"</div>
+      <div class="q-block"><span class="q-arrow">→</span>"OK donc si tu ressens que l'accompagnement peut te permettre de sortir de ta situation ? Qu'est-ce qui t'empêches de passer à l'action ?"</div>
+      <div class="if-block"><strong>Problème de certitude →</strong> Le prospect nous dit : "Oui mais si ça marche pas ? Je peux pas être certain que ça va fonctionner pour moi…" — On va traiter l'incertitude.</div>
+      <div class="if-block"><strong>On ne peut pas être sûr →</strong> "La réalité c'est que si tu cherches de la certitude, tu ne trouveras jamais. On ne peut jamais être sûr à 100% de quoique chose. En revanche est-ce que t'es d'accord avec moi pour dire que ce qui est certain c'est que si tu ne te lances pas, il n'y a rien qui va changer et tu vas rester dans ta situation ?"</div>
+      <div class="if-block"><strong>Inverser le risque →</strong> "Donc qu'est-ce qui est le plus risqué pour toi entre te lancer et prendre ne serait-ce qu'une chance sur 2 que ça marche et du coup pouvoir sortir de ta situation qui ne te convient plus et atteindre tes objectifs ou alors ne pas te lancer et avoir 100% de chance de rester dans ta situation ? C'est quoi le plus risqué ?"</div>
+    </div>
+
+    <!-- JE DOIS EN PARLER À MON MARI -->
+    <div class="script-group">
+      <div class="script-label">Je dois en parler à mon mari</div>
+      <div class="why-box">Ici l'objection est un écran de fumée, en réalité notre prospect a peur de se lancer.</div>
+      <div class="script-block key">"Ok, juste avant que tu en discutes avec elle, est-ce que tu ressens que cet accompagnement va te permettre d'atteindre tes objectifs et sortir de ta situation actuelle ? Pourquoi ?"</div>
+      <div class="q-block"><span class="q-arrow">→</span>"Est-ce que tu penses que ta femme serait contre l'idée que tu investisses dans un projet qui te permettrait à toi et à elle de pouvoir changer de vie ?"</div>
+      <div class="if-block">Ici on lui fait prendre conscience que sa femme ne pourra pas être contre</div>
+      <div class="q-block"><span class="q-arrow">→</span>"Ok donc qu'est-ce qui t'empêche de passer à l'action si tu sais que c'est la bonne décision pour toi ainsi que pour elle ?"</div>
+      <div class="if-block">Maintenant on cherche la vraie raison de son objection</div>
+      <div class="split" style="margin-top:12px">
+        <div class="split-card">
+          <div class="split-card-header peur">🔴 Peur</div>
+          <div class="split-card-body">Si le prospect répond "je sais pas, j'aimerais bien avoir son avis, c'est juste pour être sûr" — on va aller directement traiter la peur avec le mode objection peur classique.</div>
+        </div>
+        <div class="split-card">
+          <div class="split-card-header logistique">🔵 Logistique</div>
+          <div class="split-card-body">Peu probable car on avait validé avec lui en amont qu'il est seul décisionnaire. Si ça arrive on va lui demander si il n'a pas un compte perso ou une épargne qui lui est propre. Si c'est non, on ne peut que planifier un R2.</div>
+        </div>
+      </div>
+      <div class="alert amber" style="margin-top:12px">
+        <span class="alert-icon">⚡</span>
+        <div>Au final on va toujours traiter la peur. Si le prospect nous verbalise que vraiment c'est pas possible on va traiter la logistique.</div>
+      </div>
+    </div>
+
+    <!-- C'EST CHER -->
+    <div class="script-group">
+      <div class="script-label">C'est cher !</div>
+      <div class="why-box">On doit comprendre si c'est logistique, un problème de valeur ou une peur.</div>
+      <div class="script-block key">"Si on met l'argent de côté, si l'accompagnement avait été à 1€ symbolique, est-ce que tu serais passé à l'action directement ? Pourquoi ?
+
+Quand tu dis que c'est cher, c'est cher par rapport à quoi ?"</div>
+    </div>
+
+    <div class="split">
+      <div class="split-card">
+        <div class="split-card-header logistique">🔵 Logistique</div>
+        <div class="split-card-body">Si le prospect n'a en effet pas l'argent on va trouver une solution : moyens de finance, crédit, combien épargne mise de côté, combien il a maintenant et proposer EXCEPTIONNELLEMENT un plan de paiement si jamais rien n'est possible. En revanche le but ne va pas être de trop vite lâcher un plan de paiement et si c'est le prospect qui le demande dès le départ on va répondre non.</div>
+      </div>
+      <div class="split-card">
+        <div class="split-card-header peur">🔴 Valeur ou Peur</div>
+        <div class="split-card-body">
+          <p style="margin-bottom:10px">Si le prospect dit que c'est cher pour ce que c'est, on a raté notre appel et notre pitch. On va quand même traiter ça comme de la peur pour être sûr mais si notre prospect nous dit directement qu'il ne ressent pas que l'accompagnement peut l'aider à se sortir de sa situation actuelle, on est cool.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="script-group" style="margin-top:16px">
+      <div class="script-label">Traitement valeur</div>
+      <div class="q-block"><span class="q-arrow">→</span>"3k€ c'est un gros montant, je n'ai jamais investi autant, ça représente tout ce que j'ai de côté… Est-ce que tu ressens que cet accompagnement peut t'aider à atteindre tes objectifs et sortir de ta situation actuelle ? Pourquoi ?"</div>
+      <div class="q-block"><span class="q-arrow">→</span>"3k€ c'est certes un montant, mais est-ce que si investir 3k€ pouvait te permettre de changer de vie et gagner X€, pouvoir quitter ton emploi etc. Est-ce que c'est cher ou est-ce un bon investissement ?"</div>
+      <div class="q-block"><span class="q-arrow">→</span>"OK donc si tu ressens que l'accompagnement peut te permettre de sortir de ta situation et que tu trouves que c'est un bon investissement, qu'est-ce qui t'empêches de passer à l'action ?"</div>
+      <div class="if-block">Il va répondre qu'il ne sait pas ou bien qu'il a peur de passer à l'action → traitement de la peur classique</div>
+      <div class="q-block"><span class="q-arrow">→</span>"3k€ c'est un gros montant, mais est-ce que si investir 3k€ pouvait te permettre de changer de vie et gagner X€ pouvoir quitter ton emploi etc. Est-ce que c'est cher ou c'est un bon investissement ?"</div>
+    </div>
+  </div>
+
+  <!-- SECTION 3 — TRAITEMENT DE LA PEUR -->
+  <div class="section">
+    <div class="section-num">3</div>
+    <div class="section-title">Traitement de la Peur</div>
+    <div class="section-sub">Structure en 4 étapes + électrochoc final</div>
+
+    <div class="mindset-box">
+      <div class="mindset-title">Mindset & posture</div>
+      <p>On est pas des marchands de tapis, on est pas là pour brader nos offres, rentrer dans l'écosystème ça se mérite et pour ça il faut payer cash. Le paiement en plusieurs fois ne doit se faire que si le prospect n'a vraiment pas de solution et uniquement dans le but de l'aider à débloquer sa situation mais il doit le mériter.</p>
+    </div>
+
+    <div class="steps-flow">
+
+      <div class="step-flow-item">
+        <div class="step-flow-left">
+          <div class="step-flow-dot">1</div>
+          <div class="step-flow-line"></div>
+        </div>
+        <div class="step-flow-content">
+          <div class="step-flow-title">Faire exprimer la peur</div>
+          <div class="script-block">"Je peux être honnête avec toi ?
+On a vu ensemble pendant cet appel que ce qui t'avait empêché de te lancer lors des X temps et qui fait que t'as laissé Y chose sur la table et que t'es toujours dans la situation Z c'est la peur.
+Est-ce que ce serait pas une nouvelle fois cette peur qui revient et qui t'empêches de te lancer ?"</div>
+          <div class="script-group" style="margin-top:14px;margin-bottom:0">
+            <div class="script-label">S'il n'avoue pas sa peur</div>
+            <div class="script-block">"OK cool dans ce cas si c'est pas la peur et que tu ressens que l'accompagnement va te permettre de sortir de ta situation et d'atteindre tes objectifs pourquoi tu me dis pas un grand oui aujourd'hui ?
+
+En soit que tu te lances aujourd'hui pour moi ça change pas grand chose, j'enchaîne avec d'autres appels avec des gens qui sont motivés pour rejoindre l'accompagnement donc je préfère que tu sois honnête avec moi et que tu me dises ce qui se passe concrètement ?"</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-flow-item">
+        <div class="step-flow-left">
+          <div class="step-flow-dot">2</div>
+          <div class="step-flow-line"></div>
+        </div>
+        <div class="step-flow-content">
+          <div class="step-flow-title">Normaliser la peur</div>
+          <div class="script-block">"Tu sais c'est normal d'avoir peur, tout le monde a peur au moment de prendre une décision importante. Tu penses pas que ceux qui étaient à ta place au moment de prendre la décision de passer à l'action ils n'ont pas eu peur ?
+
+Maintenant face à cette peur y'a 2 types de personnes : ceux qui sont parvenus à la surmonter, qui sont passés à l'action et qui aujourd'hui ont réussi à atteindre leur objectif et y'a ceux qui n'ont pas franchi le cap, qui ont laissé la peur les dominer et qui malheureusement aujourd'hui sont toujours dans leur situation. Quel type de personne t'as envie de devenir ?
+
+Qu'est-ce qui faut que tu fasses pour devenir ce type de personne ? OK donc on y va ?"</div>
+        </div>
+      </div>
+
+      <div class="step-flow-item">
+        <div class="step-flow-left">
+          <div class="step-flow-dot">3</div>
+          <div class="step-flow-line"></div>
+        </div>
+        <div class="step-flow-content">
+          <div class="step-flow-title">Reprise du pattern</div>
+          <div class="script-block">"Pendant encore combien de temps tu veux laisser ta peur te dominer et t'empêcher de passer à l'action ?
+
+Qu'est-ce qui va se passer si tu ne passes pas à l'action aujourd'hui ? C'est ce que tu veux ?"</div>
+          <div class="alert green" style="margin-top:10px">
+            <span class="alert-icon">✓</span>
+            <div>À chaque étape on peut avoir un close. Si la personne n'est toujours pas sûre, qu'on sent encore de l'hésitation — on continue.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-flow-item">
+        <div class="step-flow-left">
+          <div class="step-flow-dot">4</div>
+          <div class="step-flow-line"></div>
+        </div>
+        <div class="step-flow-content">
+          <div class="step-flow-title">Inversion du risque</div>
+          <div class="script-block">"Qu'est-ce qui est le plus risqué pour toi entre te lancer et prendre ne serait-ce qu'une chance sur 2 que ça marche et du coup pouvoir sortir de ta situation qui ne te convient plus et atteindre tes objectifs ou alors ne pas te lancer et avoir 100% de chance de rester dans ta situation ? C'est quoi le plus risqué ?"</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="close-block">
+      <div class="close-label">⚡ Dernier électrochoc — si toujours hésitant</div>
+      <div class="script-block">"Je sais que c'est pas simple sincèrement de réussir à franchir le cap de la peur. Maintenant si t'as envie d'être la personne que tu veux être, est-ce que tu dois penser et agir comme la personne que tu es (le X 1.0) ou comme la personne que tu veux devenir (le X 2.0) ?
+
+Il aurait fait quoi le X 2.0 à ta place là maintenant ?
+
+OK donc maintenant t'as le choix entre rester la personne que tu es ou bien devenir la personne que tu veux devenir.
+
+Tu connais la définition de la folie d'Einstein ? C'est le fait de faire toujours la même chose et espérer un résultat différent. Concrètement si tu passes pas à l'action t'auras toujours le même résultat.
+
+Si toujours rien on parle de la garantie si il y en a une."</div>
+    </div>
+  </div>
+
+  <!-- SECTION 4 — TRAITEMENT LOGISTIQUE -->
+  <div class="section">
+    <div class="section-num">4</div>
+    <div class="section-title">Traitement Logistique</div>
+    <div class="section-sub">Encaisser + d'argent en appel</div>
+
+    <div class="mindset-box">
+      <div class="mindset-title">Mindset + posture</div>
+      <p>Pour encaisser plus de cash on va closer comme si il n'y avait pas de paiements en plusieurs fois possible. Tout va se jouer au <strong>mindset</strong>, sur notre <strong>posture</strong> durant l'appel. On est pas des marchands de tapis, on est pas là pour brader nos offres, rentrer dans l'écosystème ça se mérite et pour ça il faut payer cash. Le paiement en plusieurs fois ne doit se faire que si le prospect n'a vraiment pas de solution et uniquement dans le but de l'aider à débloquer sa situation mais il doit le mériter.</p>
+    </div>
+
+    <div class="steps-flow">
+
+      <div class="step-flow-item">
+        <div class="step-flow-left">
+          <div class="step-flow-dot">1</div>
+          <div class="step-flow-line"></div>
+        </div>
+        <div class="step-flow-content">
+          <div class="step-flow-title">Vérifier combien il a</div>
+          <div class="script-block">Si le prospect nous dit qu'il ne peut pas nous rejoindre car il n'a pas l'argent on va d'abord lui demander là tout de suite combien il serait en capacité de mettre :</div>
+          <div class="script-block key">"Là tout de suite, combien tu serais en capacité de mettre au maximum pour nous rejoindre ?"</div>
+        </div>
+      </div>
+
+      <div class="step-flow-item">
+        <div class="step-flow-left">
+          <div class="step-flow-dot">2</div>
+          <div class="step-flow-line"></div>
+        </div>
+        <div class="step-flow-content">
+          <div class="step-flow-title">Trouver une solution</div>
+          <div class="script-block key">"OK ! Concrètement quelles solutions tu peux mettre en place pour trouver les X€ manquants pour nous rejoindre ?"</div>
+          <div class="if-block">On va creuser avec lui les solutions possibles (amis, famille, emprunt, rentrée d'argent future…)</div>
+        </div>
+      </div>
+
+      <div class="step-flow-item">
+        <div class="step-flow-left">
+          <div class="step-flow-dot">3</div>
+          <div class="step-flow-line"></div>
+        </div>
+        <div class="step-flow-content">
+          <div class="step-flow-title">Le faire supplier de nous demander un plan de paiement</div>
+          <div class="script-block">Si vraiment y'a aucune solution on va devoir réfléchir à un paiement en plusieurs fois mais on ne doit jamais céder, l'idée doit venir du prospect qui doit se vendre pour obtenir un plan de paiement :</div>
+          <div class="script-block key">"Qu'est-ce qui te permettrait de nous rejoindre ?"</div>
+          <div class="if-block">On lui laisse nous proposer un plan de paiement et on va lui demander de préciser quel plan de paiement pourrait permettre de nous rejoindre.</div>
+        </div>
+      </div>
+
+      <div class="step-flow-item">
+        <div class="step-flow-left">
+          <div class="step-flow-dot">4</div>
+        </div>
+        <div class="step-flow-content">
+          <div class="step-flow-title">Faux message ou appel — crédibiliser le plan</div>
+          <div class="script-block">Pour rester crédible quand on a trouvé une solution de plan de paiement avec le prospect on va d'abord lui faire voir ça comme une exception et un cadeau qu'on lui fait. On va vérifier son engagement en lui demandant :</div>
+          <div class="script-block key">"Qu'est-ce qui fait qu'on devrait t'accorder un paiement en plusieurs fois, tu t'engages à te donner à 200% ?"</div>
+          <div class="if-block">Ok dans ce cas je vais téléphoner à mon supérieur pour voir avec lui si c'est possible. Puis on va simuler un appel court avec un supérieur pour valider le paiement en plusieurs fois. On peut aussi faire un faux message vocal ou un simple message écrit.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Si il demande un plan de paiement directement</div>
+      <div class="script-block key">"NON ! Pourquoi c'est impossible pour toi ?"</div>
+      <div class="if-block">Soit il a tenté le coup alors qu'il a les fonds — dans ce cas si on close sans problème. Soit c'est qu'il n'a pas les fonds. Si il dit que c'est impossible :</div>
+      <div class="script-block key">"OK ! Concrètement quelles solutions tu peux mettre en place pour nous rejoindre ?"</div>
+      <div class="if-block">C'est à lui de trouver des solutions.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 5 — PROSPECT VEUT COMPARER -->
+  <div class="section">
+    <div class="section-num">5</div>
+    <div class="section-title">Prospect veut comparer</div>
+    <div class="section-sub">Traitement spécifique — ne pas confondre avec la peur</div>
+
+    <div class="why-box">
+      <strong>Pourquoi :</strong> Cette objection est différente des autres — elle doit être traitée différemment. L'objectif est de comprendre ce qu'il cherche vraiment avant de répondre.
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Identifier la situation</div>
+      <div class="q-block"><span class="q-arrow">→</span>"Ok je comprends que tu veuilles comparer. Est-ce que tu t'es déjà renseigné, t'as pris d'autres appels ?"</div>
+    </div>
+
+    <div class="split">
+      <div class="split-card">
+        <div class="split-card-header orange">Il a pris un appel</div>
+        <div class="split-card-body">
+          <p style="margin-bottom:8px"><strong>"T'as rdv avec qui ? C'est quel jour ?"</strong></p>
+          <p><strong>"Je suis curieux pourquoi avoir programmé un autre appel ?"</strong></p>
+        </div>
+      </div>
+      <div class="split-card">
+        <div class="split-card-header orange">Il n'a pas pris d'appel</div>
+        <div class="split-card-body">Lorsque tu me dis que tu veux comparer, qu'est-ce que tu veux dire exactement par là ? S'il parle de mieux et de cher : on va d'abord traiter le cher et ensuite on traitera le mieux.</div>
+      </div>
+    </div>
+
+    <div class="script-group" style="margin-top:20px">
+      <div class="script-label">Reframer la comparaison</div>
+      <div class="script-block key">"Ok je suis curieux, toi tu cherches l'accompagnement le moins cher aujourd'hui ou celui qui va t'apporter le plus de résultats ?"
+
+"Donc ce n'est pas tellement la question du prix mais plutôt du résultat, c'est ça ?"</div>
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Valider le véhicule</div>
+      <div class="q-block"><span class="q-arrow">→</span>"Est-ce que tu ressens que cet accompagnement peut t'aider à atteindre tes objectifs et sortir de ta situation actuelle ? Pourquoi ?"</div>
+      <div class="q-block"><span class="q-arrow">→</span>"Ok donc toi aujourd'hui, qu'est-ce qui t'empêche, si tu ressens que c'est exactement le véhicule qui va te permettre d'atteindre ce résultat et sortir de la douleur, de pouvoir te lancer ?"</div>
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Perspective sur la comparaison</div>
+      <div class="q-block"><span class="q-arrow">→</span>"Je peux te partager une perspective ? Si tu rencontres la femme de ta vie qui correspond à tous tes points, qui va te permettre d'évoluer et d'être heureux, est-ce qu'avant de te mettre avec elle tu vas lui dire : 'Ah attends, j'ai besoin de comparer pour voir s'il n'y a pas une plus belle femme ou plus sociable ?'"</div>
+      <div class="q-block"><span class="q-arrow">→</span>"Ok donc si tu as un accompagnement qui coche toutes les cases, qui te permet de sortir de ta situation et d'atteindre tes objectifs, est-ce que tu trouves ça logique d'aller comparer au risque de ne jamais te lancer parce qu'à chaque fois tu voudras comparer avec quelque chose d'autre ?"</div>
+    </div>
+
+    <div class="close-block">
+      <div class="close-label">Close final</div>
+      <div class="script-block">"Ok donc est-ce que tu as envie de continuer à comparer et prendre le risque de ne pas te lancer, ou tu veux vraiment passer à l'action et qu'on aille chercher tes objectifs ?"
+
+Ici on va avoir une réponse. Si il veut passer à l'action c'est good. S'il n'est pas encore chaud on va passer au traitement de la peur.</div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="page-footer">
+  <strong>Closer Pro</strong> · Traitement des Objections · Document interne — ne pas transmettre aux prospects
+</footer>
+
+<script>
+  function toggleDropdown() {
+    var d = document.getElementById('dropdown');
+    if (d.classList.contains('open')) {
+      d.classList.remove('open');
+    } else {
+      d.classList.add('open');
+    }
+  }
+  document.addEventListener('click', function(e) {
+    var dropdown = document.getElementById('dropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>

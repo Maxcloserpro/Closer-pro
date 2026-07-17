@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Script Setting · Closer Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --orange: #E8572A; --orange-light: #FEF0EA; --orange-mid: #FDDDD0;
+    --dark: #0F0F0F; --dark-mid: #1E1E1E; --gray: #6B7280; --gray-light: #9CA3AF;
+    --bg: #FAFAF8; --bg-section: #F4F3F0; --border: #E5E2DB;
+    --purple: #6D28D9; --purple-light: #F5F3FF;
+    --green: #15803D; --green-light: #F0FDF4;
+    --amber: #B45309; --amber-light: #FFFBEB;
+    --red: #B91C1C; --red-light: #FFF5F5;
+    --blue: #1D4ED8; --blue-light: #EFF6FF;
+  }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .page-wrap { max-width: 820px; margin: 0 auto; padding: 0 28px 120px; }
+
+  .site-header { background: var(--dark); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .site-header .brand { font-size: 12px; font-weight: 700; color: #fff; letter-spacing: .1em; text-transform: uppercase; }
+  .site-header .meta { font-size: 11px; color: #6B7280; }
+
+  .doc-nav { display: flex; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .doc-nav a { font-size: 12px; font-weight: 600; color: var(--gray); text-decoration: none; padding: 5px 12px; border-radius: 100px; border: 1px solid var(--border); background: var(--bg-section); transition: all .15s; }
+  .doc-nav a:hover { color: var(--orange); border-color: var(--orange-mid); background: var(--orange-light); }
+
+  .hero { padding: 72px 0 56px; border-bottom: 1px solid var(--border); }
+  .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); margin-bottom: 20px; }
+  .hero h1 { font-family: 'Fraunces', serif; font-size: 52px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; color: var(--dark); margin-bottom: 18px; }
+  .hero-sub { font-size: 18px; color: var(--gray); max-width: 600px; line-height: 1.65; margin-bottom: 32px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 100px; background: var(--bg-section); color: var(--gray); border: 1px solid var(--border); }
+  .tag.accent { background: var(--orange-light); color: var(--orange); border-color: var(--orange-mid); }
+
+  .section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+  .section:last-of-type { border-bottom: none; }
+  .section-num { font-family: 'Fraunces', serif; font-size: 80px; font-weight: 300; color: var(--orange); line-height: 1; margin-bottom: 4px; opacity: .9; }
+  .section-title { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; letter-spacing: -.02em; color: var(--dark); margin-bottom: 6px; }
+  .section-sub { font-size: 13px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 28px; }
+
+  .why-box { background: var(--purple-light); border-left: 3px solid var(--purple); padding: 14px 18px; border-radius: 0 8px 8px 0; margin-bottom: 24px; font-size: 14px; color: var(--purple); font-style: italic; line-height: 1.7; }
+  .why-box strong { font-style: normal; font-weight: 700; }
+
+  .alert { padding: 13px 16px; border-radius: 8px; font-size: 13.5px; line-height: 1.65; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert-icon { font-size: 15px; flex-shrink: 0; margin-top: 2px; }
+  .alert.amber { background: var(--amber-light); color: var(--amber); border: 1px solid #FDE68A; }
+  .alert.green { background: var(--green-light); color: var(--green); border: 1px solid #BBF7D0; }
+  .alert.red { background: var(--red-light); color: var(--red); border: 1px solid #FECACA; }
+  .alert.blue { background: var(--blue-light); color: var(--blue); border: 1px solid #BFDBFE; }
+  .alert strong { font-weight: 700; }
+
+  .script-group { margin-bottom: 28px; }
+  .script-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .script-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .script-block { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 0 8px 8px 0; padding: 16px 20px; font-size: 15px; color: var(--dark-mid); line-height: 1.8; white-space: pre-line; margin-bottom: 8px; }
+  .script-block.key { background: var(--orange-light); font-weight: 600; color: var(--dark); }
+
+  .q-block { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 13px 18px; font-size: 14.5px; color: var(--dark-mid); line-height: 1.65; margin-bottom: 7px; display: flex; align-items: flex-start; gap: 10px; }
+  .q-arrow { color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+
+  .if-block { padding: 9px 14px 9px 16px; border-left: 2px solid var(--gray-light); margin: 6px 0 6px 12px; font-size: 13px; color: var(--gray); font-style: italic; background: var(--bg-section); border-radius: 0 6px 6px 0; line-height: 1.6; }
+  .if-block strong { font-style: normal; color: var(--dark-mid); }
+
+  .checklist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .check-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; background: #fff; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--dark-mid); line-height: 1.6; }
+  .check-icon { width: 22px; height: 22px; border-radius: 50%; background: var(--green-light); border: 1.5px solid #BBF7D0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; font-size: 12px; color: var(--green); font-weight: 700; }
+  .warn-icon { width: 22px; height: 22px; border-radius: 50%; background: var(--red-light); border: 1.5px solid #FECACA; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; font-size: 12px; color: var(--red); font-weight: 700; }
+
+  .page-footer { text-align: center; padding: 48px 0 20px; border-top: 1px solid var(--border); margin-top: 80px; font-size: 12px; color: var(--gray-light); }
+  .page-footer strong { color: var(--orange); }
+
+  
+
+  /* ── HEADER ── */
+  .site-header {
+    background: #111111 !important;
+    padding: 0 28px !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 200 !important;
+  }
+  .dropdown { position: relative; }
+  .dropdown-btn {
+    font-size: 13px; font-weight: 600; color: #fff;
+    background: #E8572A; border: none; padding: 7px 14px;
+    border-radius: 7px; cursor: pointer; display: flex;
+    align-items: center; gap: 6px;
+  }
+  .dropdown-btn:hover { opacity: .88; }
+  .dropdown-menu {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    background: #fff; border: 1px solid #E5E2DB;
+    border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    min-width: 260px; padding: 8px; display: none; z-index: 9999;
+  }
+  .dropdown.open .dropdown-menu { display: block !important; }
+  .dropdown-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: #9CA3AF; padding: 8px 10px 4px;
+  }
+  .dropdown-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 7px; text-decoration: none;
+    color: #0F0F0F; font-size: 13.5px; font-weight: 500;
+  }
+  .dropdown-item:hover { background: #F4F3F0; }
+  .dropdown-item-icon {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .dropdown-divider { height: 1px; background: #E5E2DB; margin: 6px 0; }
+
+</style>
+</head>
+<body>
+
+    <header class="site-header">
+    <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+      <div style="width:26px;height:26px;background:#E8572A;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;">C</div>
+      <span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.02em;">Closer Pro</span>
+    </a>
+    <div class="dropdown" id="dropdown">
+      <button class="dropdown-btn" onclick="toggleDropdown()">
+        Documents
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-section-label">Méthode</div>
+        <a class="dropdown-item" href="Script_Closing_Pro.html"><div class="dropdown-item-icon" style="background:#FEF0EA">📋</div>Script de Closing</a>
+        <a class="dropdown-item" href="Traitement_Objections.html"><div class="dropdown-item-icon" style="background:#FFF5F5">🛡️</div>Traitement des Objections</a>
+        <a class="dropdown-item" href="Reframing.html"><div class="dropdown-item-icon" style="background:#F5F3FF">🧠</div>Reframing des Prospects</a>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-label">Mindset</div>
+        <a class="dropdown-item" href="Mindset.html"><div class="dropdown-item-icon" style="background:#F0FDF4">🔥</div>Mindset & Croyances</a>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-label">Process</div>
+        <a class="dropdown-item" href="Script_Setting.html"><div class="dropdown-item-icon" style="background:#EFF6FF">📞</div>Script Setting</a>
+        <a class="dropdown-item" href="Process_Challenge.html"><div class="dropdown-item-icon" style="background:#FFFBEB">⚡</div>Process Challenge</a>
+        <a class="dropdown-item" href="Comment_Trouver_une_Offre.html"><div class="dropdown-item-icon" style="background:#F0FDF4">🎯</div>Comment Trouver une Offre</a>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="index.html"><div class="dropdown-item-icon" style="background:#F4F3F0">🏠</div>← Accueil</a>
+      </div>
+    </div>
+  </header>
+
+<div class="page-wrap">
+
+  <div class="doc-nav">
+    <a href="Script_Closing_Pro.html">← Script de Closing</a>
+    <a href="Process_Challenge.html">Process Challenge</a>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Document de référence</div>
+    <h1>Script Setting.</h1>
+    <p class="hero-sub">Le setting est la première étape du processus de vente. Un bon setter qualifie le prospect, crée de l'urgence et plante les graines du close avant même que le closer décroche.</p>
+    <div class="hero-tags">
+      <span class="tag accent">6 étapes</span>
+      <span class="tag">Qualification</span>
+      <span class="tag">Créer de la douleur</span>
+      <span class="tag">Planifier le RDV</span>
+    </div>
+  </div>
+
+  <!-- RÈGLE ABSOLUE -->
+  <div class="section" style="padding-top:40px;padding-bottom:40px">
+    <div class="alert red">
+      <span class="alert-icon">⚠️</span>
+      <div><strong>Règle absolue :</strong> ne jamais pitcher en profondeur pendant le setting — c'est le rôle exclusif du closer. Ne jamais donner le prix. Ne jamais forcer un RDV sur un prospect non qualifié.</div>
+    </div>
+    <div class="alert amber">
+      <span class="alert-icon">⚡</span>
+      <div><strong>Objectif du setting :</strong> qualifier le prospect, créer de la douleur avant le RDV, et s'assurer qu'il arrive à l'appel motivé — pas neutre. Plus le prospect verbalise sa situation difficile maintenant, plus il sera réceptif lors du closing call.</div>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="section">
+    <div class="section-num">1</div>
+    <div class="section-title">Accueil & mise en confiance</div>
+    <div class="section-sub">Créer une connexion humaine dès les premières secondes</div>
+
+    <div class="script-group">
+      <div class="script-label">Script</div>
+      <div class="script-block">Bonjour [Prénom] !
+
+Je suis [Ton Prénom] de [X].
+Est-ce que c'est un bon moment pour échanger quelques minutes ?
+
+(Attendre la réponse — ne jamais continuer sans accord)
+
+Super ! Vous êtes basé(e) où d'ailleurs ?
+(Laisser répondre — créer une connexion humaine)</div>
+    </div>
+
+    <div class="why-box">
+      <strong>Pourquoi :</strong> La question "vous êtes basé où ?" est anodine mais elle brise la glace et humanise immédiatement l'échange. Le prospect se détend et devient plus ouvert à répondre aux questions suivantes.
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="section">
+    <div class="section-num">2</div>
+    <div class="section-title">Poser le cadre</div>
+    <div class="section-sub">Obtenir un accord avant de continuer</div>
+
+    <div class="script-group">
+      <div class="script-label">Script</div>
+      <div class="script-block">Parfait ! Alors l'idée de cet échange, c'est simplement de voir si on est les bonnes personnes pour vous aider à [objectif].
+
+Pour ça, je vais vous poser quelques questions pour mieux comprendre votre situation et votre projet.
+
+L'entretien va durer une dizaine de minutes. À la fin, vous pourrez me poser toutes vos questions.
+
+Ça vous va ?
+(Obtenir un "oui" clair avant d'avancer)
+
+Pour que ce soit un peu plus convivial, on peut se tutoyer ?</div>
+    </div>
+
+    <div class="alert amber">
+      <span class="alert-icon">⚡</span>
+      <div>Toujours obtenir un accord verbal avant de continuer. "Ça vous va ?" n'est pas une formalité — c'est le premier engagement du prospect dans la conversation.</div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="section">
+    <div class="section-num">3</div>
+    <div class="section-title">Découverte de la situation</div>
+    <div class="section-sub">Qualifier et créer de la douleur</div>
+
+    <div class="why-box">
+      <strong>Pourquoi :</strong> Ces questions servent à deux choses en même temps : qualifier le prospect ET créer de la douleur avant le RDV avec le closer. Plus il verbalise sa situation difficile maintenant, plus il sera réceptif lors du closing call.
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Script</div>
+      <div class="q-block"><span class="q-arrow">→</span>Dis-moi [Prénom], es-tu toujours à la recherche d'aide pour [objectif] ?</div>
+      <div class="q-block"><span class="q-arrow">→</span>Depuis quand as-tu cette idée ?</div>
+      <div class="q-block"><span class="q-arrow">→</span>Qu'est-ce qui t'attire le plus dans le fait de [objectif] ?</div>
+      <div class="q-block"><span class="q-arrow">→</span>Pourquoi tu ne t'es pas lancé avant ? Qu'est-ce qui t'a bloqué ?</div>
+      <div class="q-block"><span class="q-arrow">→</span>Le fait d'atteindre cet objectif, qu'est-ce que ça va changer dans ta vie ?</div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="section">
+    <div class="section-num">4</div>
+    <div class="section-title">Explorer la disponibilité</div>
+    <div class="section-sub">Vérifier que le prospect peut s'investir</div>
+
+    <div class="script-group">
+      <div class="script-label">Script</div>
+      <div class="q-block"><span class="q-arrow">→</span>Est-ce que tu aurais concrètement du temps pour te former et t'investir dans un nouveau projet ?</div>
+      <div class="q-block"><span class="q-arrow">→</span>Tu aimerais voir des résultats d'ici combien de temps ?</div>
+    </div>
+
+    <div class="if-block"><strong>Qualifier le budget indirectement →</strong> "Tu as pensé à investir combien dans ce projet ?" — permet d'éviter les surprises au moment du close.</div>
+    <div class="if-block"><strong>Vérifier le décisionnaire →</strong> "C'est toi qui prends ce type de décision ?" — si non, inutile de planifier un RDV sans la bonne personne.</div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="section">
+    <div class="section-num">5</div>
+    <div class="section-title">Synthèse & validation</div>
+    <div class="section-sub">Reformuler pour créer l'adhésion</div>
+
+    <div class="why-box">
+      <strong>Pourquoi :</strong> Reformuler la situation du prospect avec ses propres mots lui montre qu'il a été écouté et compris. C'est un moment de connexion fort qui augmente significativement le taux de show-up.
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Script</div>
+      <div class="script-block">Merci pour ces infos [Prénom].
+
+Si je résume :
+Tu es actuellement [situation actuelle].
+Tu cherches à [objectif] depuis [durée].
+Parce qu'aujourd'hui tu ne veux plus [problèmes / frustrations évoquées].
+
+C'est bien ça ?
+(Attendre la validation du prospect)
+
+La bonne nouvelle c'est que tu corresponds aux profils qu'on aide au quotidien.
+Ça t'intéresse d'en savoir un peu plus sur comment on peut t'aider ?</div>
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Présentation courte de l'offre</div>
+      <div class="script-block">Parfait, je t'explique rapidement ce qu'on fait.
+
+Chez [X], on accompagne [profil type] qui veulent [résultat].
+
+On vous aide à :
+— [Bénéfice 1]
+— [Bénéfice 2]
+— [Bénéfice 3]
+
+Ce qui nous différencie : [différenciateur clé].
+
+L'année dernière on a accompagné [X] personnes avec des résultats comme [exemple].
+
+C'est clair pour toi ?
+
+Sur une échelle de 1 à 10, à combien tu juges ton envie d'atteindre [objectif] ?</div>
+      <div class="why-box" style="margin-top:12px">
+        <strong>La question 1 à 10 :</strong> elle force le prospect à se positionner et crée un engagement verbal. S'il dit 8 ou plus, le closing call sera beaucoup plus simple. S'il dit moins de 6, creuser pourquoi avant de planifier le RDV.
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="section">
+    <div class="section-num">6</div>
+    <div class="section-title">Planifier & clôturer</div>
+    <div class="section-sub">Verrouiller le RDV et créer de l'anticipation</div>
+
+    <div class="script-group">
+      <div class="script-label">Planification du RDV closer</div>
+      <div class="script-block">Cet appel c'était vraiment pour comprendre ta situation et voir si on est sur la même longueur d'onde.
+
+Pour aller plus loin et te faire une proposition 100% personnalisée, on va planifier un second rendez-vous.
+
+Ce sera un échange d'environ 45 minutes avec [Prénom du closer].
+
+Est-ce que [jour / heure] pourrait te convenir ?
+(Attendre confirmation et noter la date)
+
+Parfait ! Est-ce que tu as bien reçu le lien de RDV par email ?</div>
+    </div>
+
+    <div class="script-group">
+      <div class="script-label">Clôture positive</div>
+      <div class="script-block">Parfait [Prénom] !
+
+De mon côté, je vais faire part de notre échange à [Prénom du closer].
+
+En attendant, je vais te transmettre quelques ressources utiles :
+— [Lien site / témoignages]
+— [Ressource pertinente]
+
+Très important : n'oublie pas de confirmer ta présence auprès du closer avant le RDV.
+
+Merci encore pour ton temps, c'était un vrai plaisir d'échanger avec toi.
+À très vite pour la suite ! 😊</div>
+      <div class="if-block" style="margin-top:8px"><strong>Rappel :</strong> les ressources s'envoient APRÈS le RDV planifié — pas avant. Ça maintient l'intérêt et crée de l'anticipation jusqu'à l'appel.</div>
+    </div>
+  </div>
+
+  <!-- RÈGLES D'OR -->
+  <div class="section">
+    <div class="section-num" style="font-size:48px">Règles<br>d'or</div>
+    <div class="section-sub" style="margin-top:8px">Ce qu'il faut toujours faire — et ne jamais faire</div>
+
+    <div class="checklist">
+      <div class="check-item"><div class="check-icon">✓</div>Toujours obtenir un accord verbal avant de continuer ("Ça vous va ?", "C'est clair ?").</div>
+      <div class="check-item"><div class="check-icon">✓</div>Créer de la douleur avant le RDV — le prospect doit arriver motivé, pas neutre.</div>
+      <div class="check-item"><div class="check-icon">✓</div>Qualifier le budget indirectement si possible avant de planifier le RDV.</div>
+      <div class="check-item"><div class="check-icon">✓</div>Vérifier que le prospect est seul décisionnaire avant de planifier le RDV.</div>
+      <div class="check-item"><div class="check-icon">✓</div>Envoyer les ressources APRÈS le RDV planifié — jamais avant.</div>
+    </div>
+
+    <div class="checklist">
+      <div class="check-item"><div class="warn-icon">✕</div>Ne jamais pitcher en profondeur — c'est le rôle exclusif du closer.</div>
+      <div class="check-item"><div class="warn-icon">✕</div>Ne jamais forcer un RDV sur un prospect non qualifié — ça perd le temps de tout le monde.</div>
+      <div class="check-item"><div class="warn-icon">✕</div>Ne jamais donner le prix pendant le setting — toujours laisser ça au closer.</div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="page-footer">
+  <strong>Closer Pro</strong> · Script Setting · Document interne — ne pas transmettre aux prospects
+</footer>
+
+<script>
+  function toggleDropdown() {
+    var d = document.getElementById('dropdown');
+    if (d.classList.contains('open')) {
+      d.classList.remove('open');
+    } else {
+      d.classList.add('open');
+    }
+  }
+  document.addEventListener('click', function(e) {
+    var dropdown = document.getElementById('dropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mindset & Croyances Limitantes · Closer Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --orange: #E8572A; --orange-light: #FEF0EA; --orange-mid: #FDDDD0;
+    --dark: #0F0F0F; --dark-mid: #1E1E1E; --gray: #6B7280; --gray-light: #9CA3AF;
+    --bg: #FAFAF8; --bg-section: #F4F3F0; --border: #E5E2DB;
+    --purple: #6D28D9; --purple-light: #F5F3FF;
+    --green: #15803D; --green-light: #F0FDF4;
+    --amber: #B45309; --amber-light: #FFFBEB;
+    --red: #B91C1C; --red-light: #FFF5F5;
+    --blue: #1D4ED8; --blue-light: #EFF6FF;
+  }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .page-wrap { max-width: 820px; margin: 0 auto; padding: 0 28px 120px; }
+
+  .site-header { background: var(--dark); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .site-header .brand { font-size: 12px; font-weight: 700; color: #fff; letter-spacing: .1em; text-transform: uppercase; }
+  .site-header .meta { font-size: 11px; color: #6B7280; }
+
+  .doc-nav { display: flex; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .doc-nav a { font-size: 12px; font-weight: 600; color: var(--gray); text-decoration: none; padding: 5px 12px; border-radius: 100px; border: 1px solid var(--border); background: var(--bg-section); transition: all .15s; }
+  .doc-nav a:hover { color: var(--orange); border-color: var(--orange-mid); background: var(--orange-light); }
+
+  .hero { padding: 72px 0 56px; border-bottom: 1px solid var(--border); }
+  .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); margin-bottom: 20px; }
+  .hero h1 { font-family: 'Fraunces', serif; font-size: 52px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; color: var(--dark); margin-bottom: 18px; }
+  .hero-sub { font-size: 18px; color: var(--gray); max-width: 600px; line-height: 1.65; margin-bottom: 32px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 100px; background: var(--bg-section); color: var(--gray); border: 1px solid var(--border); }
+  .tag.accent { background: var(--orange-light); color: var(--orange); border-color: var(--orange-mid); }
+
+  .section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+  .section:last-of-type { border-bottom: none; }
+  .section-num { font-family: 'Fraunces', serif; font-size: 80px; font-weight: 300; color: var(--orange); line-height: 1; margin-bottom: 4px; opacity: .9; }
+  .section-title { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; letter-spacing: -.02em; color: var(--dark); margin-bottom: 6px; }
+  .section-sub { font-size: 13px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 28px; }
+
+  .why-box { background: var(--purple-light); border-left: 3px solid var(--purple); padding: 14px 18px; border-radius: 0 8px 8px 0; margin-bottom: 24px; font-size: 14px; color: var(--purple); font-style: italic; line-height: 1.7; }
+  .why-box strong { font-style: normal; font-weight: 700; }
+
+  .alert { padding: 13px 16px; border-radius: 8px; font-size: 13.5px; line-height: 1.65; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert-icon { font-size: 15px; flex-shrink: 0; margin-top: 2px; }
+  .alert.amber { background: var(--amber-light); color: var(--amber); border: 1px solid #FDE68A; }
+  .alert.green { background: var(--green-light); color: var(--green); border: 1px solid #BBF7D0; }
+  .alert.red { background: var(--red-light); color: var(--red); border: 1px solid #FECACA; }
+  .alert.blue { background: var(--blue-light); color: var(--blue); border: 1px solid #BFDBFE; }
+  .alert strong { font-weight: 700; }
+
+  .script-group { margin-bottom: 28px; }
+  .script-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .script-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* PILIERS */
+  .piliers-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  .pilier-card { border: 1px solid var(--border); border-radius: 10px; padding: 20px; background: #fff; text-align: center; }
+  .pilier-icon { font-size: 28px; margin-bottom: 10px; }
+  .pilier-name { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 6px; }
+  .pilier-desc { font-size: 13px; color: var(--gray); line-height: 1.6; }
+
+  /* CROYANCE CARDS */
+  .croyance-list { display: flex; flex-direction: column; gap: 24px; }
+  .croyance-card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .croyance-header { padding: 16px 20px; background: var(--dark-mid); display: flex; align-items: center; gap: 12px; }
+  .croyance-icon { font-size: 18px; }
+  .croyance-title { font-size: 14px; font-weight: 600; color: #fff; font-style: italic; }
+  .croyance-body { padding: 20px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
+  .croyance-warn { background: var(--red-light); border-left: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 13.5px; color: var(--red); line-height: 1.65; }
+  .croyance-reframe { background: var(--green-light); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 13.5px; color: var(--dark-mid); line-height: 1.65; }
+  .croyance-reframe strong { color: var(--green); font-weight: 700; }
+
+  /* ROUTINE */
+  .routine-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .routine-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px 18px; background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+  .routine-num { width: 28px; height: 28px; border-radius: 50%; background: var(--orange); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .routine-text { font-size: 14px; color: var(--dark-mid); line-height: 1.6; }
+
+  /* ERREURS */
+  .erreurs-list { display: flex; flex-direction: column; gap: 10px; }
+  .erreur-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; background: var(--red-light); border: 1px solid #FECACA; border-radius: 8px; font-size: 14px; color: var(--red); line-height: 1.6; }
+  .erreur-icon { font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+
+  /* PRINCIPES */
+  .principes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .principe-card { border: 1px solid var(--border); border-radius: 10px; padding: 18px; background: #fff; }
+  .principe-num { font-family: 'Fraunces', serif; font-size: 36px; font-weight: 300; color: var(--orange); line-height: 1; margin-bottom: 8px; }
+  .principe-title { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 6px; }
+  .principe-desc { font-size: 13px; color: var(--gray); line-height: 1.6; }
+
+  /* QUOTE */
+  .quote-block { background: var(--dark-mid); border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  .quote-text { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 300; color: #fff; line-height: 1.5; font-style: italic; margin-bottom: 12px; }
+  .quote-sub { font-size: 13px; color: var(--gray-light); }
+
+  .page-footer { text-align: center; padding: 48px 0 20px; border-top: 1px solid var(--border); margin-top: 80px; font-size: 12px; color: var(--gray-light); }
+  .page-footer strong { color: var(--orange); }
+
+  
+
+  /* ── HEADER ── */
+  .site-header {
+    background: #111111 !important;
+    padding: 0 28px !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 200 !important;
+  }
+  .dropdown { position: relative; }
+  .dropdown-btn {
+    font-size: 13px; font-weight: 600; color: #fff;
+    background: #E8572A; border: none; padding: 7px 14px;
+    border-radius: 7px; cursor: pointer; display: flex;
+    align-items: center; gap: 6px;
+  }
+  .dropdown-btn:hover { opacity: .88; }
+  .dropdown-menu {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    background: #fff; border: 1px solid #E5E2DB;
+    border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    min-width: 260px; padding: 8px; display: none; z-index: 9999;
+  }
+  .dropdown.open .dropdown-menu { display: block !important; }
+  .dropdown-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: #9CA3AF; padding: 8px 10px 4px;
+  }
+  .dropdown-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 7px; text-decoration: none;
+    color: #0F0F0F; font-size: 13.5px; font-weight: 500;
+  }
+  .dropdown-item:hover { background: #F4F3F0; }
+  .dropdown-item-icon {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .dropdown-divider { height: 1px; background: #E5E2DB; margin: 6px 0; }
+
+</style>
+</head>
+<body>
+
+    <header class="site-header">
+    <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+      <div style="width:26px;height:26px;background:#E8572A;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;">C</div>
+      <span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.02em;">Closer Pro</span>
+    </a>
+    <div class="dropdown" id="dropdown">
+      <button class="dropdown-btn" onclick="toggleDropdown()">
+        Documents
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-section-label">Méthode</div>
+        <a class="dropdown-item" href="Script_Closing_Pro.html"><div class="dropdown-item-icon" style="background:#FEF0EA">📋</div>Script de Closing</a>
+        <a class="dropdown-item" href="Traitement_Objections.html"><div class="dropdown-item-icon" style="background:#FFF5F5">🛡️</div>Traitement des Objections</a>
+        <a class="dropdown-item" href="Reframing.html"><div class="dropdown-item-icon" style="background:#F5F3FF">🧠</div>Reframing des Prospects</a>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-label">Mindset</div>
+        <a class="dropdown-item" href="Mindset.html"><div class="dropdown-item-icon" style="background:#F0FDF4">🔥</div>Mindset & Croyances</a>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-label">Process</div>
+        <a class="dropdown-item" href="Script_Setting.html"><div class="dropdown-item-icon" style="background:#EFF6FF">📞</div>Script Setting</a>
+        <a class="dropdown-item" href="Process_Challenge.html"><div class="dropdown-item-icon" style="background:#FFFBEB">⚡</div>Process Challenge</a>
+        <a class="dropdown-item" href="Comment_Trouver_une_Offre.html"><div class="dropdown-item-icon" style="background:#F0FDF4">🎯</div>Comment Trouver une Offre</a>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="index.html"><div class="dropdown-item-icon" style="background:#F4F3F0">🏠</div>← Accueil</a>
+      </div>
+    </div>
+  </header>
+
+<div class="page-wrap">
+
+  <div class="doc-nav">
+    <a href="Script_Closing_Pro.html">← Script de Closing</a>
+    <a href="Traitement_Objections.html">Objections</a>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Document de référence</div>
+    <h1>Mindset &<br>Croyances Limitantes.</h1>
+    <p class="hero-sub">Avant de closer des prospects, tu dois commencer par te closer toi-même. Les croyances limitantes du closer sont le frein numéro un à la performance — les identifier et les neutraliser est la base de tout.</p>
+    <div class="hero-tags">
+      <span class="tag accent">3 piliers du mindset</span>
+      <span class="tag accent">6 croyances limitantes</span>
+      <span class="tag">Routine avant appel</span>
+      <span class="tag">Erreurs à éviter</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 — LE MINDSET DU CLOSER -->
+  <div class="section">
+    <div class="section-num">1</div>
+    <div class="section-title">Le mindset du closer</div>
+    <div class="section-sub">La posture qui change tout</div>
+
+    <div class="quote-block">
+      <div class="quote-text">"Le closer n'est pas un vendeur. Il est un médecin. Son rôle : diagnostiquer, pas convaincre."</div>
+      <div class="quote-sub">Si tu rentres dans chaque appel en mode "je dois vendre", tu as déjà perdu.</div>
+    </div>
+
+    <div class="piliers-grid">
+      <div class="pilier-card">
+        <div class="pilier-icon">⚖️</div>
+        <div class="pilier-name">Détachement du résultat</div>
+        <div class="pilier-desc">Tu n'es pas là pour closer — tu es là pour aider ou disqualifier. Cette posture te rend naturellement plus convaincant car tu n'es pas dans le besoin. Le prospect le sent immédiatement.</div>
+      </div>
+      <div class="pilier-card">
+        <div class="pilier-icon">👂</div>
+        <div class="pilier-name">Curiosité sincère</div>
+        <div class="pilier-desc">Chaque question doit venir d'un vrai désir de comprendre. Les prospects sentent la différence entre quelqu'un qui s'intéresse vraiment et quelqu'un qui récite mécaniquement un script.</div>
+      </div>
+      <div class="pilier-card">
+        <div class="pilier-icon">🔥</div>
+        <div class="pilier-name">Confiance inébranlable</div>
+        <div class="pilier-desc">Tu crois profondément que ton offre peut changer la vie de ce prospect. Sans cette conviction intérieure, aucune technique de closing ne fonctionnera sur le long terme.</div>
+      </div>
+    </div>
+
+    <div class="alert amber">
+      <span class="alert-icon">⚡</span>
+      <div><strong>Principe clé :</strong> nous sommes maîtres de notre destin. Ce ne sont pas les prospects qui décident de tes résultats — c'est ta posture, ton état d'esprit et ta préparation. Chaque appel raté est une information, pas un échec.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 2 — ROUTINE AVANT APPEL -->
+  <div class="section">
+    <div class="section-num">2</div>
+    <div class="section-title">Routine avant chaque appel</div>
+    <div class="section-sub">Les 2 minutes qui font la différence</div>
+
+    <div class="why-box">
+      <strong>Pourquoi :</strong> L'énergie avec laquelle tu rentres dans un appel se ressent immédiatement. Un closer fatigué, stressé ou dans le besoin ferme le prospect avant même d'avoir posé la première question. Se préparer mentalement n'est pas optionnel.
+    </div>
+
+    <div class="routine-list">
+      <div class="routine-item"><div class="routine-num">1</div><div class="routine-text"><strong>Relis la fiche prospect</strong> — sa situation, ses objectifs, les infos clés. Ne jamais rentrer dans un appel à froid.</div></div>
+      <div class="routine-item"><div class="routine-num">2</div><div class="routine-text"><strong>Rappelle-toi ton dernier close réussi</strong> — comment tu t'es senti, ce que tu as bien fait. Ancre cet état avant de décrocher.</div></div>
+      <div class="routine-item"><div class="routine-num">3</div><div class="routine-text"><strong>Rentre dans le bon état d'esprit</strong> — répète mentalement : "Je suis là pour aider ou disqualifier, pas pour vendre."</div></div>
+      <div class="routine-item"><div class="routine-num">4</div><div class="routine-text"><strong>3 respirations profondes</strong> — calme le système nerveux, réduit le stress, améliore la présence.</div></div>
+      <div class="routine-item"><div class="routine-num">5</div><div class="routine-text"><strong>Décroche avec de l'énergie</strong> — la voix souriante, posée, confiante. La première impression se fait en 3 secondes.</div></div>
+    </div>
+
+    <div class="alert blue">
+      <span class="alert-icon">ℹ</span>
+      <div>Bien dormir et manger léger avant les calls n'est pas un détail. L'énergie physique conditionne l'énergie mentale — et l'énergie mentale conditionne la qualité de tes appels.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 3 — CROYANCES LIMITANTES DU CLOSER -->
+  <div class="section">
+    <div class="section-num">3</div>
+    <div class="section-title">Les croyances limitantes du closer</div>
+    <div class="section-sub">Les identifier pour les neutraliser</div>
+
+    <div class="why-box">
+      <strong>Pourquoi :</strong> Nous avons tous des croyances limitantes — des pensées si ancrées qu'elles influencent automatiquement nos actions. En tant que closer, tes croyances impactent directement ta performance sur chaque appel. Les identifier est la première étape pour les dépasser.
+    </div>
+
+    <div class="croyance-list">
+
+      <div class="croyance-card">
+        <div class="croyance-header"><div class="croyance-icon">💭</div><div class="croyance-title">"Je ne veux pas forcer les gens"</div></div>
+        <div class="croyance-body">
+          <div class="croyance-warn">❌ Ce que cette croyance fait : tu laisses partir des prospects qui avaient besoin d'aide. Tu confonds respect et manque d'implication. Tu deviens passif au lieu d'être présent.</div>
+          <div class="croyance-reframe"><strong>Reframe :</strong> tu n'es pas là pour forcer — tu es là pour aider des personnes qui ont déjà exprimé un problème à prendre une décision bénéfique pour elles. Si tu n'aides pas, ils resteront bloqués. Un médecin ne "force" pas ses patients à prendre leurs médicaments — il leur explique pourquoi c'est nécessaire. C'est exactement ton rôle.</div>
+        </div>
+      </div>
+
+      <div class="croyance-card">
+        <div class="croyance-header"><div class="croyance-icon">💭</div><div class="croyance-title">"Le prix est trop élevé pour mes prospects"</div></div>
+        <div class="croyance-body">
+          <div class="croyance-warn">❌ Ce que cette croyance fait : tu justifies le prix avant même qu'on te le demande. Tu baisses le prix trop vite. Tu n'oses pas aller au bout du close parce que tu penses que c'est trop cher toi-même.</div>
+          <div class="croyance-reframe"><strong>Reframe :</strong> ce n'est pas ton rôle de juger le rapport qualité/prix. Ton rôle est de comprendre si le prospect a un problème réel et si l'offre peut le résoudre. Si oui, le prix est justifié. Ce n'est pas parce que toi tu ne pourrais pas te le permettre que ton prospect ne peut pas — et même s'il ne peut pas, il y a toujours des solutions.</div>
+        </div>
+      </div>
+
+      <div class="croyance-card">
+        <div class="croyance-header"><div class="croyance-icon">💭</div><div class="croyance-title">"J'ai peur du rejet"</div></div>
+        <div class="croyance-body">
+          <div class="croyance-warn">❌ Ce que cette croyance fait : tu n'oses pas challenger le prospect. Tu abandonnes trop tôt face aux objections. Tu prends les non personnellement et tu perds confiance après chaque appel raté.</div>
+          <div class="croyance-reframe"><strong>Reframe :</strong> un non n'est pas un rejet de toi. C'est soit un mauvais timing, soit un prospect mal qualifié, soit une croyance limitante que tu n'as pas réussi à lever. Chaque non est une information qui te rend meilleur si tu l'analyses correctement. Les meilleurs closers ont raté des centaines d'appels — c'est ce qui les a rendus excellents.</div>
+        </div>
+      </div>
+
+      <div class="croyance-card">
+        <div class="croyance-header"><div class="croyance-icon">💭</div><div class="croyance-title">"Je dois être parfait avant de commencer"</div></div>
+        <div class="croyance-body">
+          <div class="croyance-warn">❌ Ce que cette croyance fait : tu attends d'être prêt avant de passer des appels. Tu te formes en permanence sans jamais pratiquer. Tu restes dans ta zone de confort sous couvert de préparation.</div>
+          <div class="croyance-reframe"><strong>Reframe :</strong> la perfection n'existe pas. La compétence se construit dans l'action, pas dans la théorie. Un appel raté t'apprend plus que 10 heures de formation. L'action crée la compétence — pas l'inverse. Lance-toi, rate, analyse, recommence. C'est le seul chemin.</div>
+        </div>
+      </div>
+
+      <div class="croyance-card">
+        <div class="croyance-header"><div class="croyance-icon">💭</div><div class="croyance-title">"Je ne suis pas fait pour ça"</div></div>
+        <div class="croyance-body">
+          <div class="croyance-warn">❌ Ce que cette croyance fait : tu attribues tes échecs à ta personnalité plutôt qu'à ta méthode. Tu abandonnes au lieu de chercher ce qui ne fonctionne pas. Tu te crois limité alors que tu es juste au début de ton apprentissage.</div>
+          <div class="croyance-reframe"><strong>Reframe :</strong> le closing s'apprend. Ce n'est pas un don inné — c'est une méthode qui s'acquiert avec de la pratique et de l'analyse. Chacun peut y arriver à condition de s'en donner les moyens. La seule vraie limite c'est de croire qu'on en a une.</div>
+        </div>
+      </div>
+
+      <div class="croyance-card">
+        <div class="croyance-header"><div class="croyance-icon">💭</div><div class="croyance-title">"Les appels ratés prouvent que je suis mauvais"</div></div>
+        <div class="croyance-body">
+          <div class="croyance-warn">❌ Ce que cette croyance fait : tu généralises un échec ponctuel. Tu perds confiance après une mauvaise série. Tu arrêtes d'analyser pour comprendre et tu commences à douter de tout.</div>
+          <div class="croyance-reframe"><strong>Reframe :</strong> un appel raté n'est jamais la preuve que tu es mauvais — c'est une information sur ce qu'il faut améliorer. Les proactifs assument leurs erreurs, les analysent et s'améliorent. Les réactifs blâment les circonstances et restent au même niveau. Quel type de closer veux-tu être ?</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION 4 — ERREURS DE MINDSET -->
+  <div class="section">
+    <div class="section-num">4</div>
+    <div class="section-title">Les erreurs de mindset à éviter</div>
+    <div class="section-sub">Ce qui détruit la performance sans qu'on s'en rende compte</div>
+
+    <div class="erreurs-list">
+      <div class="erreur-item"><div class="erreur-icon">✕</div>Rentrer dans un appel en ayant besoin de closer — le prospect le sent immédiatement et se ferme.</div>
+      <div class="erreur-item"><div class="erreur-icon">✕</div>Parler plus que le prospect pendant la découverte — 80% du temps c'est lui qui doit parler, pas toi.</div>
+      <div class="erreur-item"><div class="erreur-icon">✕</div>Penser au prix pendant la découverte — ton seul objectif dans les 15 premières minutes c'est de comprendre la situation.</div>
+      <div class="erreur-item"><div class="erreur-icon">✕</div>Prendre les objections comme des attaques personnelles — une objection c'est une information, pas un rejet.</div>
+      <div class="erreur-item"><div class="erreur-icon">✕</div>Baisser le prix dès la première résistance — ça détruit ta crédibilité et prouve que tu n'avais pas confiance en la valeur de l'offre.</div>
+      <div class="erreur-item"><div class="erreur-icon">✕</div>Raccrocher trop tôt après une objection — la plupart des closes se font après la 3ème tentative.</div>
+      <div class="erreur-item"><div class="erreur-icon">✕</div>Analyser un appel uniquement quand il s'est mal passé — les meilleurs analysent chaque appel, bon ou mauvais.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 5 — PRINCIPES FONDAMENTAUX -->
+  <div class="section">
+    <div class="section-num">5</div>
+    <div class="section-title">Les principes fondamentaux</div>
+    <div class="section-sub">Ce que les meilleurs closers ont compris</div>
+
+    <div class="principes-grid">
+      <div class="principe-card">
+        <div class="principe-num">01</div>
+        <div class="principe-title">L'action crée la compétence</div>
+        <div class="principe-desc">On n'attend pas d'être prêt pour commencer. On commence pour devenir prêt. Chaque appel, même raté, est une leçon que aucune formation ne peut remplacer.</div>
+      </div>
+      <div class="principe-card">
+        <div class="principe-num">02</div>
+        <div class="principe-title">Tu es maître de tes résultats</div>
+        <div class="principe-desc">Ce ne sont pas les prospects, les offres ou le marché qui déterminent tes résultats. C'est ta méthode, ta préparation et ta posture. Tout s'améliore avec du travail.</div>
+      </div>
+      <div class="principe-card">
+        <div class="principe-num">03</div>
+        <div class="principe-title">Voir grand pour devenir grand</div>
+        <div class="principe-desc">Si tu vises 1 close par semaine tu vas les faire. Mais si tu vises 3, tu vas trouver les ressources pour y arriver. L'ambition génère l'effort — pas l'inverse.</div>
+      </div>
+      <div class="principe-card">
+        <div class="principe-num">04</div>
+        <div class="principe-title">Le positif attire le positif</div>
+        <div class="principe-desc">Un closer qui arrive à l'appel fatigué, négatif et stressé obtient des résultats à l'image de son état. Prendre soin de son énergie physique et mentale n'est pas optionnel.</div>
+      </div>
+      <div class="principe-card">
+        <div class="principe-num">05</div>
+        <div class="principe-title">La régularité bat l'intensité</div>
+        <div class="principe-desc">10 appels par semaine pendant 6 mois vaut infiniment plus qu'un mois intense suivi d'un abandon. Les progrès se voient sur la durée, pas sur une semaine.</div>
+      </div>
+      <div class="principe-card">
+        <div class="principe-num">06</div>
+        <div class="principe-title">S'entourer tire vers le haut</div>
+        <div class="principe-desc">On est la moyenne des gens qu'on fréquente. Être entouré d'autres closers qui progressent, s'entraider et se challenger accélère la progression de chacun.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="page-footer">
+  <strong>Closer Pro</strong> · Mindset & Croyances Limitantes · Document interne — ne pas transmettre aux prospects
+</footer>
+
+<script>
+  function toggleDropdown() {
+    var d = document.getElementById('dropdown');
+    if (d.classList.contains('open')) {
+      d.classList.remove('open');
+    } else {
+      d.classList.add('open');
+    }
+  }
+  document.addEventListener('click', function(e) {
+    var dropdown = document.getElementById('dropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>

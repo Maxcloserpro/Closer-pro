@@ -1,0 +1,13 @@
+# Archive source des documents — déjà extraite dans docs/
+Contenu Closer Pro/
+
+# Outillage de dev local (serveur statique PowerShell)
+.claude/
+
+# Sauvegardes JSON exportées depuis l'app
+closer-pro-backup-*.json
+
+# Divers OS
+.DS_Store
+Thumbs.db
+desktop.ini

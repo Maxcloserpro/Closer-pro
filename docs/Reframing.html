@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reframing des Prospects · Closer Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --orange: #E8572A; --orange-light: #FEF0EA; --orange-mid: #FDDDD0;
+    --dark: #0F0F0F; --dark-mid: #1E1E1E; --gray: #6B7280; --gray-light: #9CA3AF;
+    --bg: #FAFAF8; --bg-section: #F4F3F0; --border: #E5E2DB;
+    --purple: #6D28D9; --purple-light: #F5F3FF;
+    --green: #15803D; --green-light: #F0FDF4;
+    --amber: #B45309; --amber-light: #FFFBEB;
+    --red: #B91C1C; --red-light: #FFF5F5;
+    --blue: #1D4ED8; --blue-light: #EFF6FF;
+  }
+  html { font-size: 16px; scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .page-wrap { max-width: 820px; margin: 0 auto; padding: 0 28px 120px; }
+
+  .site-header { background: var(--dark); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .site-header .brand { font-size: 12px; font-weight: 700; color: #fff; letter-spacing: .1em; text-transform: uppercase; }
+  .site-header .meta { font-size: 11px; color: #6B7280; }
+
+  .doc-nav { display: flex; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .doc-nav a { font-size: 12px; font-weight: 600; color: var(--gray); text-decoration: none; padding: 5px 12px; border-radius: 100px; border: 1px solid var(--border); background: var(--bg-section); transition: all .15s; }
+  .doc-nav a:hover { color: var(--orange); border-color: var(--orange-mid); background: var(--orange-light); }
+
+  .hero { padding: 72px 0 56px; border-bottom: 1px solid var(--border); }
+  .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); margin-bottom: 20px; }
+  .hero h1 { font-family: 'Fraunces', serif; font-size: 52px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; color: var(--dark); margin-bottom: 18px; }
+  .hero-sub { font-size: 18px; color: var(--gray); max-width: 600px; line-height: 1.65; margin-bottom: 32px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 100px; background: var(--bg-section); color: var(--gray); border: 1px solid var(--border); }
+  .tag.accent { background: var(--orange-light); color: var(--orange); border-color: var(--orange-mid); }
+
+  /* MÉTHODE CCRV */
+  .ccrv { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+  .ccrv-card { border-radius: 10px; padding: 18px; border: 1px solid var(--border); background: #fff; }
+  .ccrv-num { font-family: 'Fraunces', serif; font-size: 44px; font-weight: 300; color: var(--orange); line-height: 1; margin-bottom: 6px; }
+  .ccrv-title { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
+  .ccrv-desc { font-size: 13px; color: var(--gray); line-height: 1.6; }
+
+  /* SECTIONS */
+  .section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+  .section:last-of-type { border-bottom: none; }
+  .section-num { font-family: 'Fraunces', serif; font-size: 80px; font-weight: 300; color: var(--orange); line-height: 1; margin-bottom: 4px; opacity: .9; }
+  .section-title { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; letter-spacing: -.02em; color: var(--dark); margin-bottom: 6px; }
+  .section-sub { font-size: 13px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 28px; }
+
+  /* CROYANCE CARD */
+  .croyance { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 28px; }
+  .croyance-header { padding: 16px 20px; background: var(--dark-mid); display: flex; align-items: center; gap: 10px; }
+  .croyance-title { font-size: 15px; font-weight: 600; color: #fff; font-style: italic; }
+  .croyance-body { background: #fff; }
+
+  /* ÉTAPES CCRV dans la carte */
+  .step { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 16px; align-items: flex-start; }
+  .step:last-child { border-bottom: none; }
+  .step-badge { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; margin-top: 1px; }
+  .step-badge.c1 { background: var(--blue-light); color: var(--blue); }
+  .step-badge.c2 { background: var(--red-light); color: var(--red); }
+  .step-badge.r { background: var(--amber-light); color: var(--amber); }
+  .step-badge.v { background: var(--green-light); color: var(--green); }
+  .step-content { flex: 1; }
+  .step-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 6px; }
+  .step-text { font-size: 14.5px; color: var(--dark-mid); line-height: 1.7; }
+  .step-text em { font-style: italic; color: var(--orange); font-weight: 600; }
+
+  /* IF BLOCK */
+  .if-block { padding: 10px 14px 10px 16px; border-left: 2px solid var(--gray-light); margin: 8px 0 0; font-size: 13px; color: var(--gray); font-style: italic; background: var(--bg-section); border-radius: 0 6px 6px 0; line-height: 1.6; }
+  .if-block strong { font-style: normal; color: var(--dark-mid); }
+
+  /* BLOCKS */
+  .why-box { background: var(--purple-light); border-left: 3px solid var(--purple); padding: 14px 18px; border-radius: 0 8px 8px 0; margin-bottom: 24px; font-size: 14px; color: var(--purple); font-style: italic; line-height: 1.7; }
+  .why-box strong { font-style: normal; font-weight: 700; }
+
+  .alert { padding: 13px 16px; border-radius: 8px; font-size: 13.5px; line-height: 1.65; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start; }
+  .alert-icon { font-size: 15px; flex-shrink: 0; margin-top: 2px; }
+  .alert.amber { background: var(--amber-light); color: var(--amber); border: 1px solid #FDE68A; }
+  .alert.green { background: var(--green-light); color: var(--green); border: 1px solid #BBF7D0; }
+  .alert.blue { background: var(--blue-light); color: var(--blue); border: 1px solid #BFDBFE; }
+  .alert strong { font-weight: 700; }
+
+  /* CATÉGORIES */
+  .cat-title { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gray-light); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .cat-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .page-footer { text-align: center; padding: 48px 0 20px; border-top: 1px solid var(--border); margin-top: 80px; font-size: 12px; color: var(--gray-light); }
+  .page-footer strong { color: var(--orange); }
+
+  
+
+  /* ── HEADER ── */
+  .site-header {
+    background: #111111 !important;
+    padding: 0 28px !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 200 !important;
+  }
+  .dropdown { position: relative; }
+  .dropdown-btn {
+    font-size: 13px; font-weight: 600; color: #fff;
+    background: #E8572A; border: none; padding: 7px 14px;
+    border-radius: 7px; cursor: pointer; display: flex;
+    align-items: center; gap: 6px;
+  }
+  .dropdown-btn:hover { opacity: .88; }
+  .dropdown-menu {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    background: #fff; border: 1px solid #E5E2DB;
+    border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    min-width: 260px; padding: 8px; display: none; z-index: 9999;
+  }
+  .dropdown.open .dropdown-menu { display: block !important; }
+  .dropdown-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: #9CA3AF; padding: 8px 10px 4px;
+  }
+  .dropdown-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 7px; text-decoration: none;
+    color: #0F0F0F; font-size: 13.5px; font-weight: 500;
+  }
+  .dropdown-item:hover { background: #F4F3F0; }
+  .dropdown-item-icon {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .dropdown-divider { height: 1px; background: #E5E2DB; margin: 6px 0; }
+
+</style>
+</head>
+<body>
+
+    <header class="site-header">
+    <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+      <div style="width:26px;height:26px;background:#E8572A;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;">C</div>
+      <span style="font-size:13px;font-weight:700;color:#fff;letter-spacing:.02em;">Closer Pro</span>
+    </a>
+    <div class="dropdown" id="dropdown">
+      <button class="dropdown-btn" onclick="toggleDropdown()">
+        Documents
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-section-label">Méthode</div>
+        <a class="dropdown-item" href="Script_Closing_Pro.html"><div class="dropdown-item-icon" style="background:#FEF0EA">📋</div>Script de Closing</a>
+        <a class="dropdown-item" href="Traitement_Objections.html"><div class="dropdown-item-icon" style="background:#FFF5F5">🛡️</div>Traitement des Objections</a>
+        <a class="dropdown-item" href="Reframing.html"><div class="dropdown-item-icon" style="background:#F5F3FF">🧠</div>Reframing des Prospects</a>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-label">Mindset</div>
+        <a class="dropdown-item" href="Mindset.html"><div class="dropdown-item-icon" style="background:#F0FDF4">🔥</div>Mindset & Croyances</a>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-section-label">Process</div>
+        <a class="dropdown-item" href="Script_Setting.html"><div class="dropdown-item-icon" style="background:#EFF6FF">📞</div>Script Setting</a>
+        <a class="dropdown-item" href="Process_Challenge.html"><div class="dropdown-item-icon" style="background:#FFFBEB">⚡</div>Process Challenge</a>
+        <a class="dropdown-item" href="Comment_Trouver_une_Offre.html"><div class="dropdown-item-icon" style="background:#F0FDF4">🎯</div>Comment Trouver une Offre</a>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="index.html"><div class="dropdown-item-icon" style="background:#F4F3F0">🏠</div>← Accueil</a>
+      </div>
+    </div>
+  </header>
+
+<div class="page-wrap">
+
+  <div class="doc-nav">
+    <a href="Script_Closing_Pro.html">← Script de Closing</a>
+    <a href="Traitement_Objections.html">Objections</a>
+    <a href="Mindset.html">Mindset</a>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Document de référence</div>
+    <h1>Reframing des<br>Prospects.</h1>
+    <p class="hero-sub">Une croyance limitante n'est pas un refus — c'est une façon de penser qui peut être remplacée. La méthode CCRV te donne la structure pour le faire à chaque fois, sur chaque croyance.</p>
+    <div class="hero-tags">
+      <span class="tag accent">Méthode CCRV</span>
+      <span class="tag">Argent</span>
+      <span class="tag">Temps</span>
+      <span class="tag">Doute sur soi</span>
+      <span class="tag">Marché</span>
+      <span class="tag">Entourage</span>
+      <span class="tag">Garanties</span>
+    </div>
+  </div>
+
+  <!-- MÉTHODE CCRV -->
+  <div class="section">
+    <div class="section-num" style="font-size:60px">CCRV</div>
+    <div class="section-title">La structure universelle</div>
+    <div class="section-sub">4 étapes — toujours dans cet ordre</div>
+
+    <div class="why-box">
+      <strong>Principe :</strong> reframer, c'est remplacer une façon de penser par une autre. Mais avant de remplacer, il faut comprendre pourquoi le prospect pense comme ça, puis créer un doute sur la solidité de sa croyance. Sans cette structure, tu ne fais que donner ton avis — et personne ne change d'avis parce qu'on lui a donné un avis.
+    </div>
+
+    <div class="ccrv">
+      <div class="ccrv-card">
+        <div class="ccrv-num">C</div>
+        <div class="ccrv-title">Comprendre & Clarifier</div>
+        <div class="ccrv-desc">Pourquoi pense-t-il comme ça ? D'où vient cette croyance ? 1 ou 2 questions suffisent — l'objectif est de comprendre, pas d'interroger.</div>
+      </div>
+      <div class="ccrv-card">
+        <div class="ccrv-num">C</div>
+        <div class="ccrv-title">Casser</div>
+        <div class="ccrv-desc">Introduire le doute sur la solidité de sa croyance sans l'agresser. On ne dit pas qu'il a tort — on lui pose une question qui le force à réfléchir.</div>
+      </div>
+      <div class="ccrv-card">
+        <div class="ccrv-num">R</div>
+        <div class="ccrv-title">Remplacer</div>
+        <div class="ccrv-desc">Partager une nouvelle perspective. Utiliser une analogie si besoin. Toujours terminer sous forme de question pour que ce soit lui qui arrive à la conclusion.</div>
+      </div>
+      <div class="ccrv-card">
+        <div class="ccrv-num">V</div>
+        <div class="ccrv-title">Valider</div>
+        <div class="ccrv-desc">L'étape la plus importante. Si tu ne valides pas, tu ne sais pas s'il a vraiment intégré la nouvelle façon de penser — ou s'il t'a juste dit oui pour avancer.</div>
+      </div>
+    </div>
+
+    <div class="alert amber">
+      <span class="alert-icon">⚡</span>
+      <div><strong>Rappel :</strong> la cause de presque toutes les croyances limitantes est la même — un manque de compétences ou un manque d'implication. Le reframing consiste à faire réaliser au prospect qu'il se concentre sur le symptôme, pas sur la vraie cause.</div>
+    </div>
+  </div>
+
+  <!-- CROYANCES ARGENT -->
+  <div class="section">
+    <div class="section-num">1</div>
+    <div class="section-title">Croyances liées à l'argent</div>
+    <div class="section-sub">La cause n'est jamais l'argent — c'est toujours les compétences</div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"J'ai pas l'argent / les moyens"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Qu'est-ce que tu entends exactement par le fait que tu n'as pas l'argent ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce que tu penses que toutes les personnes qui se sont lancées avant toi avaient des milliers d'euros sur leur compte ? Est-ce qu'il n'y en a pas qui se sont lancées sans avoir beaucoup d'argent et qui ont quand même réussi ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"Est-ce que si aujourd'hui tu avais toutes les compétences pour faire tourner un business qui te rapporte 5 à 10 000€ par mois, tu aurais toujours un problème d'argent ? Non. Donc en réalité, l'argent c'est pas le vrai problème — c'est la conséquence. La cause, c'est que tu n'as pas encore les compétences pour ne plus jamais avoir de problème d'argent. Est-ce que tu es d'accord avec ça ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Du coup, est-ce que tu penses toujours que tu as un problème d'argent, ou est-ce que tu penses que tu as un problème de compétences ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"C'est trop cher"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Quand tu dis que c'est trop cher, c'est cher par rapport à quoi exactement ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Si cet accompagnement te permettait de gagner 5 000€ par mois, est-ce que tu considérerais toujours que c'est trop cher ou est-ce que tu considérerais que c'est un bon investissement ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, quelque chose n'est cher que si ça ne rapporte rien. Un investissement qui te permet de gagner X fois sa valeur en quelques mois, c'est pas une dépense — c'est le meilleur investissement que tu puisses faire. La vraie question c'est pas combien ça coûte, c'est combien ça va te rapporter."</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Est-ce que tu penses toujours que c'est trop cher, ou est-ce que tu penses que c'est un investissement dans tes compétences ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CROYANCES TEMPS -->
+  <div class="section">
+    <div class="section-num">2</div>
+    <div class="section-title">Croyances liées au temps</div>
+    <div class="section-sub">Le temps n'est jamais le vrai problème — c'est la priorité</div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"J'ai pas le temps"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Qu'est-ce qui fait que pour toi aujourd'hui tu penses que tu n'as pas le temps ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"On a tous 24 heures dans une journée. Est-ce que tu penses que les gens qui ont réussi à lancer leur business avaient plus de temps que toi ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, c'est pas un problème de temps — c'est un problème de priorité. Si aujourd'hui tu avais la certitude absolue qu'en passant 2 heures par jour sur ce projet tu atteignais tes objectifs dans 6 mois, est-ce que tu trouverais ces 2 heures ?"</div>
+            <div class="if-block"><strong>Backup si il résiste →</strong> "Est-ce que si tu avais toutes les compétences pour avoir un business qui tourne depuis chez toi et qui te rapporte X€ par mois, tu aurais toujours un problème de temps ?" → ramener sur les compétences comme pour l'argent.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Du coup, est-ce que tu penses toujours que tu n'as pas le temps, ou est-ce que tu penses que c'est une question de priorité ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"C'est pas le bon moment / j'attends que ma situation se stabilise"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Qu'est-ce qui fait que pour toi ce n'est pas le bon moment ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce que tu penses qu'il y a des personnes qui se sont lancées dans des moments encore plus compliqués que le tien et qui ont réussi ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, il n'y a jamais de bon moment. Si tu attends que ta situation soit parfaite pour te lancer, tu attendras toute ta vie. La question c'est pas quand est le bon moment — c'est est-ce que tu te donnes les moyens de changer ta situation. Et ça, c'est maintenant que ça se décide."</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Du coup, est-ce que tu penses toujours qu'il y a un bon moment pour se lancer ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CROYANCES DOUTE SUR SOI -->
+  <div class="section">
+    <div class="section-num">3</div>
+    <div class="section-title">Croyances liées au doute sur soi</div>
+    <div class="section-sub">La compétence s'apprend — personne n'est "fait pour ça" au départ</div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"Je suis pas fait pour ça"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Qu'est-ce qui te fait dire que tu n'es pas fait pour ça ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce que tu penses qu'il y a des personnes qui pensaient exactement la même chose que toi avant de se lancer, et qui aujourd'hui réussissent ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, personne n'est 'fait pour ça' au départ. Les compétences s'apprennent. La seule différence entre quelqu'un qui réussit et quelqu'un qui ne réussit pas, c'est que l'un a décidé de se former, de s'impliquer à 100% et de passer à l'action — et l'autre a laissé cette croyance prendre des décisions à sa place."</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Est-ce que tu penses toujours que tu n'es pas fait pour ça, ou est-ce que tu penses que tu n'as juste pas encore les compétences ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"J'ai jamais réussi à aller au bout de quelque chose"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Quand tu dis ça, tu penses à quoi exactement ? Tu fais référence à quoi ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce que tu penses que le fait de ne pas être allé au bout c'est parce que tu en es incapable, ou est-ce que c'est parce que tu n'avais pas le bon accompagnement et la bonne méthode derrière toi ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, les gens qui n'arrivent pas à aller au bout c'est presque toujours parce qu'ils n'ont pas eu le bon environnement, pas la bonne méthode, pas le bon accompagnement. Pas parce qu'ils en sont incapables. Dans ce que tu as essayé avant, est-ce que tu avais un vrai accompagnement structuré derrière toi ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Est-ce que tu penses toujours que tu n'es pas capable d'aller au bout, ou est-ce que tu penses que tu n'avais juste jamais eu les bons outils et le bon accompagnement pour y arriver ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"Je suis trop vieux / trop jeune"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Qu'est-ce qui te fait dire que ton âge est un problème ici ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce que tu penses qu'il n'y a aucune personne de ton âge qui a réussi à faire ce que tu veux faire ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, l'âge n'a jamais été une compétence. Ce qui fait la différence, c'est la méthode, les compétences et la capacité à s'impliquer à fond. Il y a des gens de 18 ans qui réussissent et des gens de 50 ans qui réussissent. La seule variable, c'est les compétences et l'implication."</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Du coup, est-ce que tu penses toujours que ton âge est un frein, ou est-ce que tu penses que ce qui compte vraiment c'est d'avoir les bonnes compétences et de s'impliquer à fond ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CROYANCES MARCHÉ -->
+  <div class="section">
+    <div class="section-num">4</div>
+    <div class="section-title">Croyances liées au marché</div>
+    <div class="section-sub">Si quelqu'un y arrive, c'est que c'est possible</div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"Le marché est saturé"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Qu'est-ce qui te fait dire que le marché est saturé ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce que tu penses qu'il n'y a pas un seul humain sur cette planète qui réussit aujourd'hui sur ce marché ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"Si des gens réussissent sur ce marché aujourd'hui, c'est que c'est possible. La vraie question c'est pas est-ce que le marché permet de réussir — c'est est-ce que toi tu as les compétences pour le faire. Est-ce que le marché de la boisson gazeuse est saturé parce que Coca-Cola et Pepsi existent ? Pourtant, il y a des dizaines de marques qui font de l'argent dedans."</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Est-ce que tu penses toujours que le marché est saturé, ou est-ce que tu penses que c'est plutôt que tu n'as pas encore les compétences pour t'y faire une place ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"Ça marche pour les autres mais pas pour moi"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Qu'est-ce qui te fait penser que ça ne marcherait pas pour toi spécifiquement ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Les gens pour qui ça a marché — est-ce qu'ils avaient quelque chose de fondamentalement différent de toi au départ ? Ou est-ce qu'ils ont juste acquis les bonnes compétences et se sont donnés à fond ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, cette croyance, c'est exactement ce que pensaient la plupart des gens qui réussissent aujourd'hui avant de se lancer. La différence c'est qu'ils ont arrêté de penser que c'était réservé aux autres — ils ont acquis les compétences, ils se sont impliqués à 100%, et ça a marché."</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Est-ce que tu penses toujours que ça ne peut pas marcher pour toi, ou est-ce que tu penses qu'avec les bonnes compétences et la bonne implication, il n'y a aucune raison que ça ne fonctionne pas ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"Je connais des gens qui ont essayé et ont échoué"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Les personnes que tu connais qui ont échoué — tu sais ce qui a fait qu'elles ont échoué exactement ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce qu'elles avaient un vrai accompagnement structuré ? Est-ce qu'elles ont appliqué une méthode à 100% et se sont vraiment données à fond ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, la grande majorité des gens qui échouent c'est parce qu'ils se lancent sans les bonnes compétences, sans méthode ou sans s'impliquer vraiment à fond. Ce que tu connais de leur échec, ça dit quelque chose sur leur façon de faire — pas sur ce qui est possible."</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Est-ce que le fait que des gens aient échoué sans accompagnement et sans s'impliquer à fond dit quelque chose sur ce que toi tu pourrais faire avec les bonnes compétences et en te donnant vraiment à 100% ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CROYANCES ENTOURAGE -->
+  <div class="section">
+    <div class="section-num">5</div>
+    <div class="section-title">Croyances liées à l'entourage</div>
+    <div class="section-sub">Ce ne sont pas les gens qui doutent de toi qui vont changer ta vie</div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"Mon entourage va penser que je suis fou"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Qu'est-ce qui te fait penser que ton entourage va réagir comme ça ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce que tu penses que les gens qui réussissent aujourd'hui n'ont jamais eu de personnes dans leur entourage qui doutaient d'eux ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"Presque tous ceux qui ont réussi ont eu un entourage qui doutait au départ. Mais à un moment, ils ont compris une chose : ce ne sont pas les gens qui doutent de toi qui vont changer ta vie — c'est toi. Et souvent, ces mêmes personnes qui doutaient sont les premières à être fières quand les résultats arrivent."</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Est-ce que tu penses que c'est l'avis de ton entourage qui doit dicter tes décisions, ou est-ce que tu es le seul à pouvoir décider de ce qui est bon pour ta vie ?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CROYANCES GARANTIES -->
+  <div class="section">
+    <div class="section-num">6</div>
+    <div class="section-title">Croyances liées aux garanties</div>
+    <div class="section-sub">Ce n'est pas la garantie qui donne des résultats — ce sont les compétences et l'implication</div>
+
+    <div class="croyance">
+      <div class="croyance-header"><div class="croyance-title">"J'ai besoin de plus de garanties"</div></div>
+      <div class="croyance-body">
+        <div class="step">
+          <div class="step-badge c1">C</div>
+          <div class="step-content">
+            <div class="step-label">Comprendre</div>
+            <div class="step-text">"Pourquoi tu aurais besoin d'une garantie ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge c2">C</div>
+          <div class="step-content">
+            <div class="step-label">Casser</div>
+            <div class="step-text">"Est-ce que dans ta vie tu as déjà pris des décisions importantes sans avoir de garantie à 100% ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge r">R</div>
+          <div class="step-content">
+            <div class="step-label">Remplacer</div>
+            <div class="step-text">"En réalité, rien dans la vie n'est garanti à 100%. Et ce n'est pas la garantie qui va te donner des résultats — c'est tes compétences et ton implication. Donc la vraie question c'est : est-ce que tu cherches des garanties ou est-ce que tu cherches des résultats ?"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-badge v">V</div>
+          <div class="step-content">
+            <div class="step-label">Valider</div>
+            <div class="step-text">"Est-ce que tu as réellement besoin d'une garantie pour réussir ?"</div>
+            <div class="if-block"><strong>S'il insiste sur une garantie au cas où ça ne marche pas →</strong> "Pourquoi ça ne marcherait pas pour toi ? Si tu as les bonnes compétences et que tu te donnes à 100%, qu'est-ce qui ferait que ça ne fonctionnerait pas ?"</div>
+            <div class="if-block"><strong>S'il insiste encore →</strong> "On a fait le choix de ne pas mettre en place de garantie parce que les gens qui en ont une ont tendance à moins s'impliquer — ils se disent qu'au pire ils seront remboursés. Et quelqu'un qui ne s'implique pas à 100% n'obtiendra pas les résultats qu'il mérite. Ce n'est pas ce qu'on veut pour toi."</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="page-footer">
+  <strong>Closer Pro</strong> · Reframing des Prospects · Document interne — ne pas transmettre aux prospects
+</footer>
+
+<script>
+  function toggleDropdown() {
+    var d = document.getElementById('dropdown');
+    if (d.classList.contains('open')) {
+      d.classList.remove('open');
+    } else {
+      d.classList.add('open');
+    }
+  }
+  document.addEventListener('click', function(e) {
+    var dropdown = document.getElementById('dropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
+</script>
+</body>
+</html>

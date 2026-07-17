@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Closer Pro — Le système d'exploitation du closer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,300;9..144,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ===================== Écran de connexion ===================== -->
+  <div class="auth-screen" id="auth-screen" hidden>
+    <form class="auth-card" id="auth-form">
+      <div class="auth-logo">C</div>
+      <div class="auth-title">Closer <span>Pro</span></div>
+      <p class="auth-sub">Connecte-toi pour accéder à ton espace.</p>
+      <div class="auth-field">
+        <label for="auth-email">Email</label>
+        <input class="input" type="email" id="auth-email" autocomplete="username" required>
+      </div>
+      <div class="auth-field">
+        <label for="auth-pass">Mot de passe</label>
+        <input class="input" type="password" id="auth-pass" autocomplete="current-password" required>
+      </div>
+      <div class="auth-error" id="auth-error" hidden></div>
+      <button class="btn btn-primary auth-btn" type="submit" id="auth-go">Se connecter</button>
+      <p class="auth-foot">Pas de compte ? Demande à ton administrateur de t'en créer un.</p>
+    </form>
+  </div>
+
+  <div class="app" id="app-root" hidden>
+    <!-- ===================== Sidebar ===================== -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">C</div>
+        <div class="brand-name">Closer <span>Pro</span></div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="nav-item active" data-page="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-page="crm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          CRM
+        </button>
+        <button class="nav-item" data-page="stats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></svg>
+          Statistiques
+        </button>
+        <button class="nav-item" data-page="commissions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Commissions
+        </button>
+        <button class="nav-item" data-page="documents">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Documents
+        </button>
+        <button class="nav-item" data-page="outils">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          Outils
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="data-section">
+          <div class="data-label">Données</div>
+          <div class="data-actions">
+            <button class="data-btn" id="data-export" title="Télécharger une sauvegarde JSON de toutes tes données">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exporter
+            </button>
+            <button class="data-btn" id="data-import" title="Restaurer tes données depuis un fichier de sauvegarde">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Importer
+            </button>
+          </div>
+          <input type="file" id="data-file" accept="application/json,.json" hidden />
+        </div>
+        <div class="sync-row">
+          <span class="sync-dot" id="sync-dot"></span>
+          <span id="sync-label">Synchronisé</span>
+        </div>
+        <div class="user">
+          <div class="avatar" id="user-avatar">CL</div>
+          <div class="user-id">
+            <div style="font-weight:600;color:var(--text)" id="user-email">—</div>
+            <div>Espace personnel</div>
+          </div>
+          <button class="logout-btn" id="logout-btn" title="Se déconnecter">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===================== Main ===================== -->
+    <main class="main">
+      <section class="page active" id="page-dashboard"></section>
+      <section class="page" id="page-crm"></section>
+      <section class="page" id="page-ecosystemes"></section>
+      <section class="page" id="page-stats"></section>
+      <section class="page" id="page-commissions"></section>
+      <section class="page" id="page-documents"></section>
+      <section class="page" id="page-outils"></section>
+    </main>
+  </div>
+
+  <!-- Toast & modal -->
+  <div id="toast"></div>
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.10/dist/umd/supabase.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
