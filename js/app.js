@@ -69,7 +69,7 @@ let REMOTE_UPDATED_AT = null;
 let CURRENT_USER = null;
 
 // Un nouveau compte démarre vide : aucune donnée de démonstration.
-const emptyState = () => ({ objectif: 5000, ecosystemes: [], offres: [], prospects: [], notes: [] });
+const emptyState = () => ({ objectif: 5000, ecosystemes: [], offres: [], prospects: [], notes: [], profil: {}, clients: [], factures: [] });
 
 // Toute mutation continue d'appeler save() : envoi différé vers Supabase.
 function save() { schedulePush(); }
@@ -452,6 +452,11 @@ function migrate(s) {
   s.ecosystemes = Array.isArray(s.ecosystemes) ? s.ecosystemes : [];
   s.offres = Array.isArray(s.offres) ? s.offres : [];
   delete s.ressources;
+  // Module de facturation
+  s.profil = s.profil && typeof s.profil === 'object' ? s.profil : {};
+  s.clients = Array.isArray(s.clients) ? s.clients : [];
+  s.factures = Array.isArray(s.factures) ? s.factures : [];
+  s.factureCounter = s.factureCounter && typeof s.factureCounter === 'object' ? s.factureCounter : {};
   return s;
 }
 
@@ -624,6 +629,7 @@ const RENDERERS = {
   dashboard: renderDashboard,
   crm: renderCRM, ecosystemes: renderEcosystemes,
   stats: renderStats, commissions: renderCommissions,
+  facturation: renderFacturation,
   documents: renderDocuments, outils: renderOutils
 };
 
@@ -1887,6 +1893,334 @@ function exportCommissionsCSV() {
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
   toast(`${pays.length} ligne(s) exportée(s)`);
+}
+
+/* ==========================================================================
+   PAGE — Facturation (auto-entrepreneur en franchise de TVA)
+   ========================================================================== */
+const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+const TVA_MENTION = 'TVA non applicable - article 293 B du CGI';
+
+const clientById = (id) => state.clients.find(c => c.id === id);
+const profilComplet = () => { const p = state.profil || {}; return !!(p.prenom && p.nom && p.adresse && p.cp && p.ville && p.siret); };
+
+// Commissions ENCAISSÉES (paiement reçu) dans le mois donné, pour l'écosystème du client.
+// Une ligne par versement reçu : date de réception, prospect, montant de commission.
+function invoiceLines(ecoId, annee, mois) {
+  const start = new Date(annee, mois - 1, 1);
+  const end = new Date(annee, mois, 0, 23, 59, 59, 999);
+  const lines = [];
+  signedProspects().forEach(p => {
+    if (p.ecosystemeId !== ecoId) return;
+    (p.paiements || []).forEach(pay => {
+      if (!pay.dateRecu) return;
+      const rd = new Date(pay.dateRecu);
+      if (isNaN(rd) || rd < start || rd > end) return;
+      lines.push({ date: pay.dateRecu, prospect: p.nom, montant: payCommission(p, pay) });
+    });
+  });
+  lines.sort((a, b) => new Date(a.date) - new Date(b.date));
+  return lines;
+}
+
+// Numérotation séquentielle par année, via un compteur monotone (jamais réutilisé,
+// même si une facture est supprimée — continuité légale des numéros).
+function nextInvoiceNumber(annee) {
+  state.factureCounter = state.factureCounter || {};
+  const next = (state.factureCounter[annee] || 0) + 1;
+  return { seq: next, numero: `${annee}-${String(next).padStart(3, '0')}` };
+}
+
+// jsPDF chargé à la demande (au premier "Générer le PDF") pour ne pas alourdir le démarrage.
+let _jspdf = null;
+function loadJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if (_jspdf) return _jspdf;
+  _jspdf = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+    s.onload = () => resolve(window.jspdf.jsPDF);
+    s.onerror = () => { _jspdf = null; reject(new Error('Chargement de jsPDF impossible')); };
+    document.head.appendChild(s);
+  });
+  return _jspdf;
+}
+
+function renderFacturation() {
+  const p = state.profil || {};
+  const profilCard = profilComplet()
+    ? `<div class="fact-profil-grid">
+        <div><span class="ds-lbl">Émetteur</span><div class="fact-strong">${esc(p.prenom)} ${esc(p.nom)}</div></div>
+        <div><span class="ds-lbl">Adresse</span><div>${esc(p.adresse)}<br>${esc(p.cp)} ${esc(p.ville)}</div></div>
+        <div><span class="ds-lbl">SIRET</span><div>${esc(p.siret)}</div></div>
+        ${p.iban ? `<div><span class="ds-lbl">IBAN</span><div>${esc(p.iban)}</div></div>` : ''}
+      </div>`
+    : `<div class="fact-empty">Renseigne ton profil pour pouvoir générer des factures.</div>`;
+
+  const clientRows = state.clients.length ? state.clients.map(c => {
+    const eco = ecoById(c.ecosystemeId);
+    return `<tr>
+      <td class="t-strong" data-label="Client">${esc(c.societe)}</td>
+      <td class="muted" data-label="Écosystème">${eco ? esc(eco.nom) : '<span style="color:var(--red)">— non lié —</span>'}</td>
+      <td class="muted" data-label="Ville">${esc(c.ville || '—')}</td>
+      <td class="muted" data-label="SIRET">${esc(c.siret || '—')}</td>
+      <td class="muted" data-label="Email">${esc(c.email || '—')}</td>
+      <td class="t-right t-actions" style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" data-edit-client="${c.id}">Modifier</button>
+        <button class="btn btn-danger btn-sm" data-del-client="${c.id}">✕</button>
+      </td></tr>`;
+  }).join('') : `<tr class="crm-empty"><td colspan="6" class="muted" style="text-align:center;padding:24px">Aucun client. Ajoute ton premier infopreneur / HOS.</td></tr>`;
+
+  const factures = [...state.factures].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const histRows = factures.length ? factures.map(f => `<tr>
+    <td class="t-strong" data-label="Numéro">${esc(f.numero)}</td>
+    <td data-label="Date">${fmtDate(f.createdAt)}</td>
+    <td data-label="Client">${esc(f.clientSnap ? f.clientSnap.societe : '—')}</td>
+    <td data-label="Période">${MONTHS_FR[f.mois - 1]} ${f.annee}</td>
+    <td class="t-right t-num" data-label="Montant" style="color:var(--rev)">${eur(f.total)}</td>
+    <td class="t-right t-actions" style="white-space:nowrap">
+      <button class="btn btn-ghost btn-sm" data-dl-facture="${f.id}">PDF</button>
+      <button class="btn btn-danger btn-sm" data-del-facture="${f.id}">✕</button>
+    </td></tr>`).join('') : `<tr class="crm-empty"><td colspan="6" class="muted" style="text-align:center;padding:24px">Aucune facture générée pour l'instant.</td></tr>`;
+
+  $('#page-facturation').innerHTML = `
+    <div class="page-head">
+      <div><h1 class="page-title">Facturation</h1><div class="page-subtitle">Profil, clients et factures de commissions</div></div>
+      <button class="btn btn-primary" id="fact-new" ${profilComplet() && state.clients.length ? '' : 'disabled'}>${ICONS.plus} Générer une facture</button>
+    </div>
+
+    <div class="card mb">
+      <div class="flex between items-center" style="margin-bottom:14px"><div class="kpic-label">Mon profil</div><button class="btn btn-ghost btn-sm" id="fact-profil-edit">${profilComplet() ? 'Modifier' : 'Renseigner'}</button></div>
+      ${profilCard}
+    </div>
+
+    <div class="card mb">
+      <div class="flex between items-center" style="margin-bottom:14px"><div class="kpic-label">Mes clients</div><button class="btn btn-ghost btn-sm" id="fact-client-add">${ICONS.plus} Ajouter un client</button></div>
+      <div class="table-scroll"><table class="stat-table crm-table">
+        <thead><tr><th>Client</th><th>Écosystème</th><th>Ville</th><th>SIRET</th><th>Email</th><th class="t-right">Actions</th></tr></thead>
+        <tbody>${clientRows}</tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="kpic-label" style="margin-bottom:14px">Historique des factures</div>
+      <div class="table-scroll"><table class="stat-table crm-table">
+        <thead><tr><th>Numéro</th><th>Date</th><th>Client</th><th>Période</th><th class="t-right">Montant</th><th class="t-right">Actions</th></tr></thead>
+        <tbody>${histRows}</tbody></table></div>
+    </div>`;
+
+  $('#fact-profil-edit').onclick = () => profilForm();
+  $('#fact-client-add').onclick = () => clientForm();
+  const nb = $('#fact-new'); if (nb) nb.onclick = () => invoiceModal();
+  $$('#page-facturation [data-edit-client]').forEach(b => b.onclick = () => clientForm(clientById(b.dataset.editClient)));
+  $$('#page-facturation [data-del-client]').forEach(b => b.onclick = () => {
+    const c = clientById(b.dataset.delClient);
+    openModal(`<h3>Supprimer ce client ?</h3><p class="hint" style="margin-bottom:16px">« ${esc(c.societe)} » sera supprimé. Les factures déjà générées sont conservées.</p><div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-danger" id="dc">Supprimer</button></div>`);
+    $('#dc').onclick = () => { state.clients = state.clients.filter(x => x.id !== c.id); save(); closeModal(); renderFacturation(); toast('Client supprimé'); };
+  });
+  $$('#page-facturation [data-dl-facture]').forEach(b => b.onclick = () => { const f = state.factures.find(x => x.id === b.dataset.dlFacture); if (f) generateInvoicePDF(f); });
+  $$('#page-facturation [data-del-facture]').forEach(b => b.onclick = () => {
+    const f = state.factures.find(x => x.id === b.dataset.delFacture);
+    openModal(`<h3>Supprimer la facture ${esc(f.numero)} ?</h3><div class="import-warn">Supprimer une facture émise est déconseillé (continuité légale des numéros). Le numéro ${esc(f.numero)} ne sera pas réattribué.</div><div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-danger" id="df">Supprimer quand même</button></div>`);
+    $('#df').onclick = () => { state.factures = state.factures.filter(x => x.id !== f.id); save(); closeModal(); renderFacturation(); toast('Facture supprimée'); };
+  });
+}
+
+function profilForm() {
+  const p = state.profil || {};
+  openModal(`<h3>Mon profil</h3>
+    <div class="form-grid">
+      <div class="field"><label>Prénom</label><input class="input" id="pf-prenom" value="${esc(p.prenom || '')}"></div>
+      <div class="field"><label>Nom</label><input class="input" id="pf-nom" value="${esc(p.nom || '')}"></div>
+      <div class="field full"><label>Adresse</label><input class="input" id="pf-adresse" value="${esc(p.adresse || '')}"></div>
+      <div class="field"><label>Code postal</label><input class="input" id="pf-cp" value="${esc(p.cp || '')}"></div>
+      <div class="field"><label>Ville</label><input class="input" id="pf-ville" value="${esc(p.ville || '')}"></div>
+      <div class="field"><label>SIRET</label><input class="input" id="pf-siret" value="${esc(p.siret || '')}"></div>
+      <div class="field"><label>IBAN (optionnel)</label><input class="input" id="pf-iban" value="${esc(p.iban || '')}"></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" id="pf-save">Enregistrer</button></div>`, { wide: true });
+  $('#pf-save').onclick = () => {
+    const data = {
+      prenom: $('#pf-prenom').value.trim(), nom: $('#pf-nom').value.trim(),
+      adresse: $('#pf-adresse').value.trim(), cp: $('#pf-cp').value.trim(),
+      ville: $('#pf-ville').value.trim(), siret: $('#pf-siret').value.trim(),
+      iban: $('#pf-iban').value.trim()
+    };
+    if (!data.prenom || !data.nom || !data.adresse || !data.cp || !data.ville || !data.siret) { toast('Tous les champs sont requis (sauf IBAN)'); return; }
+    state.profil = data; save(); closeModal(); renderFacturation(); toast('Profil enregistré');
+  };
+}
+
+function clientForm(existing) {
+  const c = existing || {};
+  const ecoOpts = `<option value="">— Aucun —</option>` + state.ecosystemes.map(e => `<option value="${e.id}" ${e.id === c.ecosystemeId ? 'selected' : ''}>${esc(e.nom)}</option>`).join('');
+  openModal(`<h3>${existing ? 'Modifier le client' : 'Nouveau client'}</h3>
+    <div class="form-grid">
+      <div class="field full"><label>Nom société ou nom / prénom</label><input class="input" id="cl-societe" value="${esc(c.societe || '')}"></div>
+      <div class="field full"><label>Écosystème facturé</label><select class="select" id="cl-eco">${ecoOpts}</select></div>
+      <div class="field full"><label>Adresse</label><input class="input" id="cl-adresse" value="${esc(c.adresse || '')}"></div>
+      <div class="field"><label>Code postal</label><input class="input" id="cl-cp" value="${esc(c.cp || '')}"></div>
+      <div class="field"><label>Ville</label><input class="input" id="cl-ville" value="${esc(c.ville || '')}"></div>
+      <div class="field"><label>SIRET</label><input class="input" id="cl-siret" value="${esc(c.siret || '')}"></div>
+      <div class="field"><label>Email de facturation</label><input class="input" type="email" id="cl-email" value="${esc(c.email || '')}"></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" id="cl-save">Enregistrer</button></div>`, { wide: true });
+  $('#cl-save').onclick = () => {
+    const societe = $('#cl-societe').value.trim();
+    if (!societe) { toast('Le nom du client est requis'); return; }
+    const data = {
+      societe, ecosystemeId: $('#cl-eco').value,
+      adresse: $('#cl-adresse').value.trim(), cp: $('#cl-cp').value.trim(),
+      ville: $('#cl-ville').value.trim(), siret: $('#cl-siret').value.trim(),
+      email: $('#cl-email').value.trim()
+    };
+    if (existing) Object.assign(existing, data);
+    else state.clients.push({ id: uid(), ...data, createdAt: nowISO() });
+    save(); closeModal(); renderFacturation(); toast(existing ? 'Client mis à jour' : 'Client ajouté');
+  };
+}
+
+function invoiceModal() {
+  const now = new Date();
+  const years = [];
+  for (let y = now.getFullYear(); y >= now.getFullYear() - 3; y--) years.push(y);
+  const clientOpts = state.clients.map(c => `<option value="${c.id}">${esc(c.societe)}</option>`).join('');
+  const monthOpts = MONTHS_FR.map((m, i) => `<option value="${i + 1}" ${i === now.getMonth() ? 'selected' : ''}>${m}</option>`).join('');
+  const yearOpts = years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+  openModal(`<h3>Générer une facture</h3>
+    <div class="form-grid">
+      <div class="field full"><label>Client</label><select class="select" id="iv-client">${clientOpts}</select></div>
+      <div class="field"><label>Mois</label><select class="select" id="iv-mois">${monthOpts}</select></div>
+      <div class="field"><label>Année</label><select class="select" id="iv-annee">${yearOpts}</select></div>
+      <div class="field full"><label>Mode</label><select class="select" id="iv-mode"><option value="detaille">Détaillé (une ligne par close)</option><option value="simplifie">Simplifié (total uniquement)</option></select></div>
+    </div>
+    <div id="iv-preview" class="fact-preview"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" id="iv-go">Générer le PDF</button></div>`, { wide: true });
+
+  const refresh = () => {
+    const c = clientById($('#iv-client').value);
+    const mois = Number($('#iv-mois').value), annee = Number($('#iv-annee').value);
+    const box = $('#iv-preview');
+    if (!c || !c.ecosystemeId) {
+      box.innerHTML = `<div class="import-warn">Ce client n'est lié à aucun écosystème. Modifie-le pour choisir l'écosystème à facturer.</div>`;
+      $('#iv-go').disabled = true; return;
+    }
+    const lines = invoiceLines(c.ecosystemeId, annee, mois);
+    const total = lines.reduce((s, l) => s + l.montant, 0);
+    const eco = ecoById(c.ecosystemeId);
+    if (!lines.length) {
+      box.innerHTML = `<div class="fact-empty">Aucune commission encaissée en ${MONTHS_FR[mois - 1]} ${annee} pour l'écosystème « ${esc(eco ? eco.nom : '')} ».</div>`;
+      $('#iv-go').disabled = true; return;
+    }
+    box.innerHTML = `<div class="fact-prev-head">${lines.length} commission(s) · écosystème « ${esc(eco.nom)} »</div>
+      <div class="fact-prev-total">Total à facturer : <b>${eur(total)}</b></div>`;
+    $('#iv-go').disabled = false;
+  };
+  $('#iv-client').onchange = refresh; $('#iv-mois').onchange = refresh; $('#iv-annee').onchange = refresh;
+  refresh();
+
+  $('#iv-go').onclick = async () => {
+    const c = clientById($('#iv-client').value);
+    const mois = Number($('#iv-mois').value), annee = Number($('#iv-annee').value);
+    const lines = invoiceLines(c.ecosystemeId, annee, mois);
+    if (!lines.length) { toast('Aucune commission sur cette période'); return; }
+    const total = lines.reduce((s, l) => s + l.montant, 0);
+    const num = nextInvoiceNumber(annee);
+
+    const facture = {
+      id: uid(), numero: num.numero, seq: num.seq, annee, mois,
+      clientId: c.id, ecosystemeId: c.ecosystemeId,
+      mode: $('#iv-mode').value, lignes: lines, total,
+      createdAt: nowISO(),
+      emetteurSnap: { ...state.profil },
+      clientSnap: { societe: c.societe, adresse: c.adresse, cp: c.cp, ville: c.ville, siret: c.siret, email: c.email }
+    };
+
+    const btn = $('#iv-go'); btn.disabled = true; btn.textContent = 'Génération…';
+    try {
+      await generateInvoicePDF(facture);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Générer le PDF';
+      toast(String(e.message || e).includes('jsPDF') ? 'Librairie PDF indisponible (vérifie ta connexion)' : 'Erreur lors de la génération');
+      return;
+    }
+    // On ne consomme le numéro et n'enregistre qu'une fois le PDF produit.
+    state.factureCounter = state.factureCounter || {};
+    state.factureCounter[annee] = num.seq;
+    state.factures.push(facture);
+    save(); closeModal(); renderFacturation();
+    toast(`Facture ${num.numero} générée`);
+  };
+}
+
+async function generateInvoicePDF(facture) {
+  const jsPDF = await loadJsPDF();
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const em = facture.emetteurSnap || {}, cl = facture.clientSnap || {};
+  const M = 18; // marge
+  let y = M;
+  const euro = (n) => (Number(n) || 0).toLocaleString('fr-FR') + ' EUR';
+
+  // En-tête
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(20);
+  doc.text('FACTURE', M, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(90);
+  doc.text(`N° ${facture.numero}`, 210 - M, y - 4, { align: 'right' });
+  doc.text(`Date : ${new Date(facture.createdAt).toLocaleDateString('fr-FR')}`, 210 - M, y + 1, { align: 'right' });
+  y += 14;
+  doc.setDrawColor(220); doc.line(M, y, 210 - M, y); y += 10;
+
+  // Émetteur / Client
+  doc.setFontSize(9); doc.setTextColor(130);
+  doc.text('ÉMETTEUR', M, y); doc.text('CLIENT', 115, y); y += 5;
+  doc.setFontSize(10); doc.setTextColor(30);
+  const emLines = [`${em.prenom || ''} ${em.nom || ''}`, em.adresse || '', `${em.cp || ''} ${em.ville || ''}`, `SIRET : ${em.siret || ''}`];
+  const clLines = [cl.societe || '', cl.adresse || '', `${cl.cp || ''} ${cl.ville || ''}`, cl.siret ? `SIRET : ${cl.siret}` : ''];
+  const baseY = y;
+  emLines.forEach((l, i) => doc.text(l, M, baseY + i * 5));
+  clLines.forEach((l, i) => { if (l) doc.text(l, 115, baseY + i * 5); });
+  y = baseY + 4 * 5 + 8;
+
+  // Objet
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20);
+  doc.text(`Prestation de closing — commissions ${MONTHS_FR[facture.mois - 1]} ${facture.annee}`, M, y);
+  y += 10;
+
+  // Tableau
+  const right = 210 - M;
+  doc.setFillColor(245, 243, 240); doc.rect(M, y - 5, right - M, 8, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(80);
+  if (facture.mode === 'detaille') {
+    doc.text('DATE', M + 2, y); doc.text('PROSPECT', M + 30, y); doc.text('COMMISSION', right - 2, y, { align: 'right' });
+    y += 8; doc.setFont('helvetica', 'normal'); doc.setTextColor(40);
+    facture.lignes.forEach(l => {
+      if (y > 260) { doc.addPage(); y = M; }
+      doc.text(new Date(l.date).toLocaleDateString('fr-FR'), M + 2, y);
+      doc.text(String(l.prospect).slice(0, 45), M + 30, y);
+      doc.text(euro(l.montant), right - 2, y, { align: 'right' });
+      y += 6;
+    });
+  } else {
+    doc.text('DÉSIGNATION', M + 2, y); doc.text('MONTANT', right - 2, y, { align: 'right' });
+    y += 8; doc.setFont('helvetica', 'normal'); doc.setTextColor(40);
+    doc.text(`Commissions de closing — ${facture.lignes.length} vente(s)`, M + 2, y);
+    doc.text(euro(facture.total), right - 2, y, { align: 'right' });
+    y += 6;
+  }
+
+  y += 4; doc.setDrawColor(220); doc.line(M, y, right, y); y += 8;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20);
+  doc.text('TOTAL', right - 45, y); doc.text(euro(facture.total), right - 2, y, { align: 'right' });
+  y += 12;
+
+  // Mentions légales
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
+  doc.text(TVA_MENTION, M, y); y += 6;
+  if (em.iban) { doc.text(`IBAN : ${em.iban}`, M, y); y += 6; }
+  doc.setTextColor(140); doc.setFontSize(8);
+  doc.text('Auto-entrepreneur en franchise de TVA. Paiement à réception.', M, 285);
+
+  doc.save(`Facture_${facture.numero}.pdf`);
 }
 
 /* ==========================================================================

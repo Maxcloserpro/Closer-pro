@@ -1107,3 +1107,18 @@ tfoot td { padding: 12px 16px; }
   .kpic { padding: 14px; }
   .kpi-value { font-size: 23px; }
 }
+
+/* ==========================================================================
+   Facturation
+   ========================================================================== */
+.fact-profil-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.fact-profil-grid .ds-lbl { display: block; margin-bottom: 3px; }
+.fact-strong { font-weight: 700; }
+.fact-empty { color: var(--text-3); font-size: 13.5px; padding: 6px 0; }
+.fact-preview { margin: 4px 0 14px; }
+.fact-prev-head { font-size: 12.5px; color: var(--text-2); margin-bottom: 6px; }
+.fact-prev-total { font-size: 15px; }
+.fact-prev-total b { color: var(--rev); font-weight: 800; }
+@media (max-width: 860px) {
+  .fact-profil-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+}
