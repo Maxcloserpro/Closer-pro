@@ -231,6 +231,52 @@ $('#logout-btn').addEventListener('click', async () => {
   doLogout();
 });
 
+// Supabase impose un mot de passe d'au moins 6 caractères par défaut.
+const MIN_PASSWORD = 6;
+
+$('#pwd-change').addEventListener('click', () => {
+  closeNav(); // sur mobile, referme la sidebar en overlay
+  openModal(`<h3>Changer mon mot de passe</h3>
+    <div class="field">
+      <label for="pw-new">Nouveau mot de passe</label>
+      <input class="input" type="password" id="pw-new" autocomplete="new-password" placeholder="Au moins ${MIN_PASSWORD} caractères">
+    </div>
+    <div class="field">
+      <label for="pw-confirm">Confirmer le mot de passe</label>
+      <input class="input" type="password" id="pw-confirm" autocomplete="new-password">
+    </div>
+    <div class="auth-error" id="pw-error" hidden></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" id="pw-save">Mettre à jour</button>
+    </div>`);
+
+  const errBox = $('#pw-error');
+  const showErr = (m) => { errBox.textContent = m; errBox.hidden = false; };
+
+  $('#pw-save').onclick = async () => {
+    const pw = $('#pw-new').value;
+    const confirm = $('#pw-confirm').value;
+    errBox.hidden = true;
+
+    if (pw.length < MIN_PASSWORD) { showErr(`Le mot de passe doit faire au moins ${MIN_PASSWORD} caractères.`); return; }
+    if (pw !== confirm) { showErr('Les deux mots de passe ne correspondent pas.'); return; }
+
+    const btn = $('#pw-save');
+    btn.disabled = true; btn.textContent = 'Mise à jour…';
+    const { error } = await sb.auth.updateUser({ password: pw });
+    btn.disabled = false; btn.textContent = 'Mettre à jour';
+
+    if (error) {
+      // Ex. "New password should be different from the old password."
+      showErr(error.message || 'La mise à jour a échoué. Réessaie.');
+      return;
+    }
+    closeModal();
+    toast('Mot de passe modifié avec succès');
+  };
+});
+
 async function doLogout() {
   await sb.auth.signOut();
   CURRENT_USER = null; state = null; REMOTE_UPDATED_AT = null;

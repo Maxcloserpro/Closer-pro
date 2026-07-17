@@ -216,6 +216,7 @@ html, body {
 }
 .data-btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
 .data-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.data-btn-wide { width: 100%; flex: none; margin-bottom: 12px; padding: 8px 4px; }
 
 /* Avertissement d'écrasement à l'import */
 .import-warn {
