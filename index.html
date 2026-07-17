@@ -31,8 +31,14 @@
   </div>
 
   <div class="app" id="app-root" hidden>
+    <!-- Mobile : ouvre/ferme la sidebar en overlay -->
+    <button class="nav-toggle" id="nav-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-backdrop" id="nav-backdrop"></div>
+
     <!-- ===================== Sidebar ===================== -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-logo">C</div>
         <div class="brand-name">Closer <span>Pro</span></div>

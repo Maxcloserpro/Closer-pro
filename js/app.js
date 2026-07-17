@@ -592,8 +592,25 @@ function go(page) {
 
 $('#nav').addEventListener('click', (e) => {
   const btn = e.target.closest('.nav-item');
-  if (btn) go(btn.dataset.page);
+  if (btn) { go(btn.dataset.page); closeNav(); } // sur mobile, la sidebar recouvre la page
 });
+
+/* ---------- Sidebar mobile (overlay) ---------- */
+function setNav(open) {
+  $('#sidebar').classList.toggle('open', open);
+  $('#nav-backdrop').classList.toggle('show', open);
+  $('#nav-toggle').setAttribute('aria-expanded', String(open));
+  $('#nav-toggle').setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+  // Empêche le défilement de la page derrière l'overlay
+  document.body.classList.toggle('nav-locked', open);
+}
+const closeNav = () => setNav(false);
+
+$('#nav-toggle').addEventListener('click', () => setNav(!$('#sidebar').classList.contains('open')));
+$('#nav-backdrop').addEventListener('click', closeNav);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNav(); });
+// Repasser en desktop doit repartir d'un état propre (sidebar toujours visible).
+window.addEventListener('resize', () => { if (window.innerWidth > 860) closeNav(); });
 
 /* ---------- Sidebar : section Données ---------- */
 $('#data-export').onclick = () => exportData();
@@ -709,7 +726,7 @@ function renderDashboard() {
       ${kpiCard('Taux d\'encaissé jour J', tauxJourJ + '%', C_RATE, `${eur(jourJ)} encaissés au close`)}
     </div>
 
-    <div class="grid sec" style="grid-template-columns:60% 1fr">
+    <div class="grid grid-60 sec">
       <div class="card">
         <div class="kpic-label">CA contracté — 12 derniers mois</div>
         <div class="chart-box" style="height:320px;margin-top:14px"><canvas id="dash-chart"></canvas></div>
@@ -731,7 +748,7 @@ function renderDashboard() {
 
     <div class="card">
       <div class="kpic-label" style="margin-bottom:14px">Dernières ventes</div>
-      <table class="clean-table"><thead><tr><th>Nom</th><th>Offre</th><th class="t-right">Deal</th><th class="t-right">Commission</th><th>Date</th><th>Paiement</th></tr></thead><tbody>${salesRows}</tbody></table>
+      <div class="table-scroll"><table class="clean-table"><thead><tr><th>Nom</th><th>Offre</th><th class="t-right">Deal</th><th class="t-right">Commission</th><th>Date</th><th>Paiement</th></tr></thead><tbody>${salesRows}</tbody></table></div>
     </div>`;
 
   // animations barres
@@ -902,21 +919,22 @@ function renderTous() {
   const cols = [['nom', 'Nom'], ['eco', 'Écosystème'], ['offre', 'Offre'], ['statut', 'Statut'], ['prix', 'Deal (€)'], ['jourJ', 'Collecté J'], ['commission', 'Commission'], ['dateRdv', 'Date RDV'], ['dateClose', 'Date close']];
   const arrow = (k) => f.sort.col === k ? (f.sort.dir < 0 ? ' ↓' : ' ↑') : '';
   const thead = cols.map(([k, l]) => `<th class="sortable ${f.sort.col === k ? 'sort-active' : ''}" data-sort="${k}">${l}${arrow(k)}</th>`).join('') + '<th class="t-right">Actions</th>';
+  // Les data-label alimentent la bascule en cards sur mobile (CSS pur, voir .crm-table).
   const rows = list.length ? list.map(p => `<tr>
-    <td class="t-strong">${esc(p.nom)}</td>
-    <td class="muted">${esc(p.ecosystemeNom || '—')}</td>
-    <td class="muted">${esc(p.offre || '—')}</td>
-    <td><span class="badge badge-${STATUS_COLOR[p.statut]}">${esc(p.statut)}</span></td>
-    <td class="t-right t-num">${p.statut === 'Closé' && p.prix ? eur(p.prix) : '—'}</td>
-    <td class="t-right t-num" style="color:var(--rev)">${p.statut === 'Closé' && dealJourJ(p) ? eur(dealJourJ(p)) : '—'}</td>
-    <td class="t-right t-num" style="color:var(--rev)">${p.statut === 'Closé' && p.commission ? eur(p.commission) : '—'}</td>
-    <td>${p.dateRdv ? fmtDate(p.dateRdv) : '—'}</td>
-    <td>${p.dateClose ? fmtDate(p.dateClose) : '—'}</td>
-    <td class="t-right" style="white-space:nowrap">
+    <td class="t-strong" data-label="Nom">${esc(p.nom)}</td>
+    <td class="muted" data-label="Écosystème">${esc(p.ecosystemeNom || '—')}</td>
+    <td class="muted" data-label="Offre">${esc(p.offre || '—')}</td>
+    <td data-label="Statut"><span class="badge badge-${STATUS_COLOR[p.statut]}">${esc(p.statut)}</span></td>
+    <td class="t-right t-num" data-label="Deal">${p.statut === 'Closé' && p.prix ? eur(p.prix) : '—'}</td>
+    <td class="t-right t-num" data-label="Collecté J" style="color:var(--rev)">${p.statut === 'Closé' && dealJourJ(p) ? eur(dealJourJ(p)) : '—'}</td>
+    <td class="t-right t-num" data-label="Commission" style="color:var(--rev)">${p.statut === 'Closé' && p.commission ? eur(p.commission) : '—'}</td>
+    <td data-label="Date RDV">${p.dateRdv ? fmtDate(p.dateRdv) : '—'}</td>
+    <td data-label="Date close">${p.dateClose ? fmtDate(p.dateClose) : '—'}</td>
+    <td class="t-right t-actions" style="white-space:nowrap">
       <button class="btn btn-ghost btn-sm" data-view="${p.id}">Voir</button>
       <button class="btn btn-ghost btn-sm" data-stat="${p.id}">Statut</button>
       <button class="btn btn-danger btn-sm" data-del="${p.id}">✕</button>
-    </td></tr>`).join('') : `<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">Aucun prospect ne correspond aux filtres.</td></tr>`;
+    </td></tr>`).join('') : `<tr class="crm-empty"><td colspan="10" class="muted" style="text-align:center;padding:30px">Aucun prospect ne correspond aux filtres.</td></tr>`;
 
   const offreOpts = state.offres.filter(o => !f.eco || o.ecosystemeId === f.eco);
   $('#crm-tab').innerHTML = `
@@ -929,7 +947,7 @@ function renderTous() {
       </div>
       <div style="margin-top:12px">${periodSelectorHTML(f.period, ['aujourdhui', '7j', '30j', 'mois', '3mois', '6mois', 'annee', 'tout', 'perso'])}</div>
       <div class="count-line" style="margin-top:12px">${list.length} prospect${list.length > 1 ? 's' : ''} trouvé${list.length > 1 ? 's' : ''}</div>
-      <div class="table-scroll" style="margin-top:8px"><table class="stat-table"><thead><tr>${thead}</tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="table-scroll" style="margin-top:8px"><table class="stat-table crm-table"><thead><tr>${thead}</tr></thead><tbody>${rows}</tbody></table></div>
     </div>`;
 
   $('#t-q').addEventListener('input', () => { f.q = $('#t-q').value; renderTous(); });
@@ -1105,9 +1123,9 @@ function prospectForm(existing) {
       <div class="ds-item"><div class="ds-lbl">Reste à collecter</div><div class="ds-val" style="color:${resteACollecter(x) > 0 ? 'var(--orange)' : 'var(--text-3)'}">${eur(resteACollecter(x))}</div></div>
     </div>
     <div class="ds-plan-title">Plan de paiement</div>
-    <table class="clean-table" style="margin-bottom:18px"><thead><tr><th class="t-right">Montant</th><th>Prévue</th><th>Reçue</th><th>Statut</th></tr></thead><tbody>
+    <div class="table-scroll"><table class="clean-table" style="margin-bottom:18px"><thead><tr><th class="t-right">Montant</th><th>Prévue</th><th>Reçue</th><th>Statut</th></tr></thead><tbody>
       ${(x.paiements || []).length ? x.paiements.map(pay => `<tr><td class="t-right t-num">${eur(pay.montant)}</td><td>${pay.datePrevu ? fmtDate(pay.datePrevu) : '—'}</td><td>${pay.dateRecu ? fmtDate(pay.dateRecu) : '—'}</td><td><span class="badge badge-${pay.dateRecu ? 'green' : 'gray'}">${pay.dateRecu ? 'reçu' : 'en attente'}</span></td></tr>`).join('') : '<tr><td colspan="4" class="muted" style="text-align:center;padding:12px">Aucune échéance</td></tr>'}
-    </tbody></table>` : '';
+    </tbody></table></div>` : '';
 
   openModal(`<h3>${existing ? 'Modifier le prospect' : 'Nouveau prospect'}</h3>
     ${summary}
@@ -1750,13 +1768,13 @@ function renderCommissions() {
       ${kpiCard('À venir', eur(Math.round(fin.commEnAttente)), C_COMM, 'Sur paiements planifiés')}
     </div>
 
-    <div class="grid sec" style="grid-template-columns:55% 1fr">
+    <div class="grid grid-55 sec">
       <div class="card">
         <div class="kpic-label">Commissions ce mois</div>
         <div class="sub-label">Nouveaux closes</div>
-        <table class="clean-table"><thead><tr><th>Nom</th><th>Offre</th><th class="t-right">Deal total</th><th class="t-right">Payé aujourd'hui</th><th class="t-right">Comm. encaissée</th><th>Date</th></tr></thead><tbody>${aRows}</tbody></table>
+        <div class="table-scroll"><table class="clean-table"><thead><tr><th>Nom</th><th>Offre</th><th class="t-right">Deal total</th><th class="t-right">Payé aujourd'hui</th><th class="t-right">Comm. encaissée</th><th>Date</th></tr></thead><tbody>${aRows}</tbody></table></div>
         <div class="sub-label" style="margin-top:22px">Paiements récurrents reçus</div>
-        <table class="clean-table"><thead><tr><th>Nom</th><th>Offre</th><th class="t-right">Montant reçu</th><th class="t-right">Commission</th><th>Date reçu</th><th>Deal original</th></tr></thead><tbody>${bRows}</tbody></table>
+        <div class="table-scroll"><table class="clean-table"><thead><tr><th>Nom</th><th>Offre</th><th class="t-right">Montant reçu</th><th class="t-right">Commission</th><th>Date reçu</th><th>Deal original</th></tr></thead><tbody>${bRows}</tbody></table></div>
         <div class="cons-line"><span>Commission totale encaissée ce mois</span><span class="t-num" style="color:${C_REV};font-weight:700">${eur(Math.round(encaisseesMois))}</span></div>
       </div>
       <div class="card">
@@ -1773,10 +1791,10 @@ function renderCommissions() {
           <button class="btn btn-ghost btn-sm" id="cm-export">${ICONS.trend} Export CSV</button>
         </div>
       </div>
-      <table class="clean-table"><thead><tr><th>Date</th><th>Nom</th><th>Offre</th><th>Type</th><th class="t-right">Montant encaissé</th><th class="t-right">Commission</th></tr></thead>
+      <div class="table-scroll"><table class="clean-table"><thead><tr><th>Date</th><th>Nom</th><th>Offre</th><th>Type</th><th class="t-right">Montant encaissé</th><th class="t-right">Commission</th></tr></thead>
         <tbody>${histRows}</tbody>
         <tfoot><tr class="row-total"><td colspan="5" class="t-strong">Total (${hist.length})</td><td class="t-right t-num" style="color:${C_REV}">${eur(Math.round(histTotal))}</td></tr></tfoot>
-      </table>
+      </table></div>
     </div>`;
 
   $('#cm-export').onclick = exportCommissionsCSV;

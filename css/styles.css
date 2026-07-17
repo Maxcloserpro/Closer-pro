@@ -86,6 +86,24 @@ html, body {
   flex-direction: column;
   padding: 22px 16px;
   z-index: 50;
+  overflow-y: auto;
+}
+
+/* Hamburger + voile : masqués sur desktop, activés dans la media query mobile. */
+.nav-toggle {
+  display: none;
+  position: fixed; top: 10px; left: 10px; z-index: 70;
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm); color: var(--text);
+  cursor: pointer; align-items: center; justify-content: center;
+}
+.nav-toggle svg { width: 21px; height: 21px; }
+.nav-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 45;
+  background: rgba(28, 27, 25, 0.45);
+  opacity: 0; transition: opacity var(--transition);
 }
 
 .brand {
@@ -248,6 +266,8 @@ html, body {
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 .grid-5 { grid-template-columns: repeat(5, 1fr); }
+.grid-60 { grid-template-columns: 60% 1fr; }
+.grid-55 { grid-template-columns: 55% 1fr; }
 .mb { margin-bottom: 18px; }
 
 /* KPI cards */
@@ -945,3 +965,144 @@ tfoot td { padding: 12px 16px; }
 .cm-fix { font-size: 13.5px; color: var(--rev); background: var(--green-soft); border-radius: var(--radius-sm); padding: 8px 12px; }
 .cm-fix-lbl { font-weight: 700; }
 
+
+/* ==========================================================================
+   Responsive — mobile & tablette
+   Point de bascule à 860px : en dessous, la sidebar ne peut plus cohabiter
+   avec le contenu (248px sur un écran de 390px).
+   ========================================================================== */
+@media (max-width: 860px) {
+
+  /* --- Sidebar en overlay, ouverte par le hamburger --- */
+  .nav-toggle { display: flex; }
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--transition);
+    box-shadow: none;
+    width: 270px;
+  }
+  .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
+  .nav-backdrop { display: block; pointer-events: none; }
+  .nav-backdrop.show { opacity: 1; pointer-events: auto; }
+  body.nav-locked { overflow: hidden; }
+
+  .main { margin-left: 0; }
+  /* Dégage la zone du hamburger (44px + marges) */
+  .page { padding: 64px 16px 48px; }
+  .page-title { font-size: 24px; }
+  .page-head { margin-bottom: 20px; gap: 14px; }
+
+  /* --- Typographie : un cran au-dessus pour la lecture au doigt --- */
+  body { font-size: 15px; }
+  tbody td, .table td { font-size: 14.5px; }
+  .kpic-label, .kpi-label { font-size: 13.5px; }
+  .hint { font-size: 13px; }
+  .muted, .count-line { font-size: 13.5px; }
+  .badge { font-size: 12.5px; }
+  .card-title { font-size: 15.5px; }
+
+  /* --- Boutons : cibles tactiles confortables (min 44px) --- */
+  .btn { padding: 12px 18px; font-size: 15px; min-height: 44px; }
+  .btn-sm { padding: 9px 14px; font-size: 13.5px; min-height: 38px; }
+  .page-head .flex.gap { gap: 10px; width: 100%; }
+  .page-head .btn { flex: 1; }
+  .tab { padding: 12px 16px; font-size: 15px; }
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .nav-item { padding: 12px 12px; font-size: 15px; }
+
+  /* --- Grilles : tout se replie --- */
+  .grid { gap: 14px; }
+  .grid-5, .grid-4, .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .grid-2, .grid-60, .grid-55 { grid-template-columns: 1fr; }
+  .kanban, .kanban-3 { grid-template-columns: 1fr; }
+  .eco-wrap, .detail-grid, .stat-blocks, .pts-grid, .split-grid { grid-template-columns: 1fr; }
+  .kpic { padding: 16px; }
+  .kpi-value { font-size: 26px; }
+  /* Sans ceci, un enfant de grille (min-width:auto) refuse de rétrécir sous la
+     largeur de son contenu et fait déborder toute la page (ex. tables larges). */
+  .grid > *, .card { min-width: 0; }
+
+  /* --- Formulaires : un champ par ligne, pleine largeur --- */
+  .form-grid { grid-template-columns: 1fr; }
+  .input, .select, .textarea {
+    width: 100%;
+    padding: 12px 13px;
+    /* 16px : en dessous, iOS zoome automatiquement à la mise au point */
+    font-size: 16px;
+  }
+  .field label { font-size: 13.5px; }
+  .filters { gap: 8px; }
+  .filters .input, .filters .select { width: 100%; flex: 1 1 100%; min-width: 0; }
+  .modal { padding: 20px 16px; border-radius: var(--radius); }
+  .modal.wide { width: 100%; }
+  .modal-actions { flex-direction: column-reverse; gap: 8px; }
+  .modal-actions .btn { width: 100%; }
+  .plan-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .plan-row .plan-recu-cell { grid-column: 1 / -1; }
+  .plan-x { grid-column: 1 / -1; }
+
+  /* --- CRM : le tableau devient une pile de cards --- */
+  .crm-table { min-width: 0; }
+  .crm-table thead { display: none; }
+  .crm-table, .crm-table tbody, .crm-table tr, .crm-table td { display: block; width: 100%; }
+  .crm-table tr {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .crm-table tr:hover { background: var(--surface); }
+  .crm-table td {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 7px 0; border-bottom: 1px solid #F4F2EE;
+    font-size: 14.5px; text-align: right; white-space: normal;
+  }
+  .crm-table td::before {
+    content: attr(data-label);
+    font-size: 12px; font-weight: 600; color: var(--text-3);
+    text-align: left; flex-shrink: 0;
+  }
+  /* Le nom fait office de titre de card */
+  .crm-table td[data-label="Nom"] {
+    font-size: 16px; font-weight: 700; padding-top: 0;
+    border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 4px;
+  }
+  .crm-table td[data-label="Nom"]::before { display: none; }
+  .crm-table td.t-actions {
+    display: flex; gap: 8px; border-bottom: none; padding: 12px 0 0;
+  }
+  .crm-table td.t-actions::before { display: none; }
+  .crm-table td.t-actions .btn { flex: 1; }
+  .crm-table .crm-empty td { display: block; text-align: center; }
+  .crm-table .crm-empty td::before { display: none; }
+  .crm-table .crm-empty { padding: 0; }
+  /* La crm-table devenue cards ne déborde plus ; les autres tables denses
+     (stats, dernières ventes, commissions) gardent leur défilement horizontal
+     à l'intérieur de leur carte plutôt que de pousser toute la page. */
+  .table-scroll { margin: 0; }
+  /* Largeur mini pour défiler proprement plutôt que d'écraser les colonnes. */
+  .clean-table { min-width: 460px; }
+
+  /* --- Divers --- */
+  .rdv-item, .enc-item { grid-template-columns: 1fr auto; gap: 8px; }
+  .hbar-row { grid-template-columns: 90px 1fr; }
+  .kb-hero { padding: 24px 4px 32px; }
+  .kb-hero-title { font-size: 34px; }
+  .kb-hero-sub { font-size: 15.5px; }
+  .kb-wrap { padding: 0 4px 24px; }
+  .kb-section { padding: 32px 0; }
+  .doc-viewer { height: calc(100vh - 130px); }
+  .chart-box { height: 240px !important; }
+  .funnel-svg-wrap svg { height: 200px; }
+  .auth-card { padding: 32px 22px; }
+}
+
+/* Très petits écrans : on resserre les marges et on empile les boutons d'en-tête,
+   mais les cards de stats restent en 2 colonnes (demande explicite). */
+@media (max-width: 420px) {
+  .page { padding: 60px 12px 40px; }
+  .page-head .flex.gap { flex-direction: column; }
+  .page-head .btn { width: 100%; }
+  .kpic { padding: 14px; }
+  .kpi-value { font-size: 23px; }
+}
