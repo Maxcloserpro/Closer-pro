@@ -457,6 +457,8 @@ function migrate(s) {
   s.profil = s.profil && typeof s.profil === 'object' ? s.profil : {};
   s.clients = Array.isArray(s.clients) ? s.clients : [];
   s.factures = Array.isArray(s.factures) ? s.factures : [];
+  // Statut par défaut sur les factures existantes (créées avant la fonctionnalité)
+  s.factures.forEach(f => { if (!INVOICE_STATUSES.includes(f.statut)) f.statut = 'Brouillon'; });
   s.factureCounter = s.factureCounter && typeof s.factureCounter === 'object' ? s.factureCounter : {};
   return s;
 }
@@ -1929,6 +1931,10 @@ function exportCommissionsCSV() {
 const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const TVA_MENTION = 'TVA non applicable - article 293 B du CGI';
 
+// Statut d'une facture (slug ASCII pour les classes CSS)
+const INVOICE_STATUSES = ['Brouillon', 'Envoyée', 'Payée'];
+const INVOICE_STATUS_SLUG = { 'Brouillon': 'draft', 'Envoyée': 'sent', 'Payée': 'paid' };
+
 const clientById = (id) => state.clients.find(c => c.id === id);
 const profilComplet = () => { const p = state.profil || {}; return !!(p.prenom && p.nom && p.telephone && p.email && p.adresse && p.cp && p.ville && p.siret); };
 
@@ -2011,17 +2017,24 @@ function renderFacturation() {
       </td></tr>`).join('') : `<tr class="crm-empty"><td colspan="6" class="muted" style="text-align:center;padding:24px">Aucun client. Ajoute ton premier infopreneur / HOS.</td></tr>`;
 
   const factures = [...state.factures].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const statutBadge = (f) => {
+    const st = INVOICE_STATUSES.includes(f.statut) ? f.statut : 'Brouillon';
+    return `<select class="statut-badge statut-${INVOICE_STATUS_SLUG[st]}" data-statut="${f.id}" title="Changer le statut">
+      ${INVOICE_STATUSES.map(s => `<option ${s === st ? 'selected' : ''}>${s}</option>`).join('')}
+    </select>`;
+  };
   const histRows = factures.length ? factures.map(f => `<tr>
     <td class="t-strong" data-label="Numéro">${esc(f.numero)}</td>
     <td data-label="Date">${fmtDate(f.createdAt)}</td>
     <td data-label="Client">${esc(f.clientSnap ? f.clientSnap.societe : '—')}</td>
     <td data-label="Période">${MONTHS_FR[f.mois - 1]} ${f.annee}</td>
     <td data-label="Mode"><span class="badge badge-${f.mode === 'detaille' ? 'blue' : 'gray'}">${f.mode === 'detaille' ? 'Détaillé' : 'Simplifié'}</span></td>
+    <td data-label="Statut">${statutBadge(f)}</td>
     <td class="t-right t-num" data-label="Montant" style="color:var(--rev)">${eur(f.total)}</td>
     <td class="t-right t-actions" style="white-space:nowrap">
       <button class="btn btn-ghost btn-sm" data-dl-facture="${f.id}">PDF</button>
       <button class="btn btn-danger btn-sm" data-del-facture="${f.id}">✕</button>
-    </td></tr>`).join('') : `<tr class="crm-empty"><td colspan="7" class="muted" style="text-align:center;padding:24px">Aucune facture générée pour l'instant.</td></tr>`;
+    </td></tr>`).join('') : `<tr class="crm-empty"><td colspan="8" class="muted" style="text-align:center;padding:24px">Aucune facture générée pour l'instant.</td></tr>`;
 
   $('#page-facturation').innerHTML = `
     <div class="page-head">
@@ -2044,7 +2057,7 @@ function renderFacturation() {
     <div class="card">
       <div class="kpic-label" style="margin-bottom:14px">Historique des factures</div>
       <div class="table-scroll"><table class="stat-table crm-table">
-        <thead><tr><th>Numéro</th><th>Date</th><th>Client</th><th>Période</th><th>Mode</th><th class="t-right">Montant</th><th class="t-right">Actions</th></tr></thead>
+        <thead><tr><th>Numéro</th><th>Date</th><th>Client</th><th>Période</th><th>Mode</th><th>Statut</th><th class="t-right">Montant</th><th class="t-right">Actions</th></tr></thead>
         <tbody>${histRows}</tbody></table></div>
     </div>`;
 
@@ -2056,6 +2069,15 @@ function renderFacturation() {
     const c = clientById(b.dataset.delClient);
     openModal(`<h3>Supprimer ce client ?</h3><p class="hint" style="margin-bottom:16px">« ${esc(c.societe)} » sera supprimé. Les factures déjà générées sont conservées.</p><div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-danger" id="dc">Supprimer</button></div>`);
     $('#dc').onclick = () => { state.clients = state.clients.filter(x => x.id !== c.id); save(); closeModal(); renderFacturation(); toast('Client supprimé'); };
+  });
+  $$('#page-facturation [data-statut]').forEach(sel => sel.onchange = () => {
+    const f = state.factures.find(x => x.id === sel.dataset.statut);
+    if (!f) return;
+    f.statut = sel.value;
+    // Reflète la couleur immédiatement, puis persiste (save() pousse vers Supabase)
+    sel.className = 'statut-badge statut-' + INVOICE_STATUS_SLUG[f.statut];
+    save();
+    toast(`Facture ${f.numero} · ${f.statut}`);
   });
   $$('#page-facturation [data-dl-facture]').forEach(b => b.onclick = () => { const f = state.factures.find(x => x.id === b.dataset.dlFacture); if (f) generateInvoicePDF(f); });
   $$('#page-facturation [data-del-facture]').forEach(b => b.onclick = () => {
@@ -2172,7 +2194,7 @@ function invoiceModal() {
 
     const facture = {
       id: uid(), numero: num.numero, seq: num.seq, annee, mois,
-      clientId: c.id,
+      clientId: c.id, statut: 'Brouillon',
       mode: $('#iv-mode').value, lignes: lines, total, encaisse, modeGlobal: globalMode(lines),
       createdAt: nowISO(),
       emetteurSnap: { ...state.profil },
