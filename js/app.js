@@ -1938,18 +1938,18 @@ const INVOICE_STATUS_SLUG = { 'Brouillon': 'draft', 'Envoyée': 'sent', 'Payée'
 const clientById = (id) => state.clients.find(c => c.id === id);
 const profilComplet = () => { const p = state.profil || {}; return !!(p.prenom && p.nom && p.telephone && p.email && p.adresse && p.cp && p.ville && p.siret); };
 
-// Commission encaissée (part reçue) sur un prospect pendant un mois donné.
-function commissionEncaisseeMois(p, start, end) {
+// Montant du DEAL (cash, pas la commission) encaissé sur un prospect pendant un mois donné.
+function cashEncaisseeMois(p, start, end) {
   return (p.paiements || []).reduce((s, pay) => {
     if (!pay.dateRecu) return s;
     const rd = new Date(pay.dateRecu);
-    return (isNaN(rd) || rd < start || rd > end) ? s : s + payCommission(p, pay);
+    return (isNaN(rd) || rd < start || rd > end) ? s : s + (Number(pay.montant) || 0);
   }, 0);
 }
 
 // Toutes les commissions CLOSÉES sur la période (dateClose dans le mois), tous écosystèmes.
 // Chaque ligne = un close : date, prospect, email, commission totale du deal,
-// mode de paiement, et commission encaissée ce mois-ci.
+// mode de paiement, et montant du deal encaissé ce mois-ci.
 function invoiceLines(annee, mois) {
   const start = new Date(annee, mois - 1, 1);
   const end = new Date(annee, mois, 0, 23, 59, 59, 999);
@@ -1964,7 +1964,7 @@ function invoiceLines(annee, mois) {
       email: p.email || '',
       commission: calcCommission(p) || 0,
       mode: p.modePaiement || '',
-      encaisse: commissionEncaisseeMois(p, start, end)
+      encaisse: cashEncaisseeMois(p, start, end)
     });
   });
   lines.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -2254,11 +2254,11 @@ async function generateInvoicePDF(facture) {
   const right = 210 - M;
   const cell = (txt, x, opt) => doc.text(String(txt), x, y, opt);
   if (facture.mode === 'detaille') {
-    // Colonnes : Date | Prospect (+ email) | Mode | Commission | Encaissé mois
-    const cMode = 108, cComm = 150, cEnc = right;
+    // Colonnes : Date | Prospect (+ email) | Mode | Encaissé mois | Commission
+    const cMode = 108, cEnc = 150, cComm = right;
     doc.setFillColor(245, 243, 240); doc.rect(M, y - 5, right - M, 8, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80);
-    cell('DATE', M + 2); cell('PROSPECT', M + 24); cell('MODE', cMode); cell('COMMISSION', cComm, { align: 'right' }); cell('ENCAISSÉ', cEnc - 2, { align: 'right' });
+    cell('DATE', M + 2); cell('PROSPECT', M + 24); cell('MODE', cMode); cell('ENCAISSÉ', cEnc, { align: 'right' }); cell('COMMISSION', cComm - 2, { align: 'right' });
     y += 7;
     doc.setFont('helvetica', 'normal'); doc.setTextColor(40); doc.setFontSize(8.5);
     facture.lignes.forEach(l => {
@@ -2266,8 +2266,8 @@ async function generateInvoicePDF(facture) {
       cell(new Date(l.date).toLocaleDateString('fr-FR'), M + 2);
       cell(String(l.prospect).slice(0, 26), M + 24);
       cell(String(l.mode || '—').slice(0, 12), cMode);
-      cell(euro(l.commission), cComm, { align: 'right' });
-      cell(euro(l.encaisse), cEnc - 2, { align: 'right' });
+      cell(euro(l.encaisse), cEnc, { align: 'right' });
+      cell(euro(l.commission), cComm - 2, { align: 'right' });
       if (l.email) { y += 3.6; doc.setTextColor(150); doc.setFontSize(7); cell(String(l.email).slice(0, 40), M + 24); doc.setTextColor(40); doc.setFontSize(8.5); }
       y += 6;
     });
@@ -2285,10 +2285,7 @@ async function generateInvoicePDF(facture) {
 
   y += 4; doc.setDrawColor(220); doc.line(M, y, right, y); y += 8;
   doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20);
-  doc.text('TOTAL COMMISSIONS', right - 60, y); doc.text(euro(facture.total), right - 2, y, { align: 'right' });
-  y += 7;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(90);
-  doc.text(`Dont encaissé ce mois-ci : ${euro(facture.encaisse)}`, right - 2, y, { align: 'right' });
+  doc.text('TOTAL', right - 45, y); doc.text(euro(facture.total), right - 2, y, { align: 'right' });
   y += 12;
 
   // Mentions légales
