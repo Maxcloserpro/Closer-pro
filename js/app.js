@@ -2224,14 +2224,31 @@ async function generateInvoicePDF(facture) {
   const em = facture.emetteurSnap || {}, cl = facture.clientSnap || {};
   const M = 18; // marge
   let y = M;
-  const euro = (n) => (Number(n) || 0).toLocaleString('fr-FR') + ' EUR';
+
+  // Remplace les espaces Unicode (fine insécable U+202F, insécable U+00A0…) par une
+  // espace ASCII : sinon jsPDF bascule la chaîne en UTF-16 et les polices standard
+  // rendent du charabia (ex. « &4 /&0&0&0 »).
+  const S = (t) => String(t == null ? '' : t).replace(/[\u00A0\u202F\u2007\u2009\u2060]/g, ' ');
+  // Montant sûr : séparateur de milliers = espace ASCII (jamais toLocaleString ici).
+  const euro = (n) => {
+    const v = Math.round(Number(n) || 0);
+    const digits = String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return (v < 0 ? '-' : '') + digits + ' EUR';
+  };
+  // Date JJ/MM/AAAA en ASCII, sans dépendre de la locale.
+  const fdate = (d) => { const dt = new Date(d); if (isNaN(dt)) return ''; const p = (n) => String(n).padStart(2, '0'); return `${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()}`; };
+
+  // Filet de sécurité : tout texte dessiné passe par S() (aucun caractère Unicode
+  // problématique ne peut atteindre jsPDF, quelle que soit la source).
+  const _text = doc.text.bind(doc);
+  doc.text = (txt, x, yy, opt) => _text(S(txt), x, yy, opt);
 
   // En-tête
   doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(20);
   doc.text('FACTURE', M, y);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(90);
   doc.text(`N° ${facture.numero}`, 210 - M, y - 4, { align: 'right' });
-  doc.text(`Date : ${new Date(facture.createdAt).toLocaleDateString('fr-FR')}`, 210 - M, y + 1, { align: 'right' });
+  doc.text(`Date : ${fdate(facture.createdAt)}`, 210 - M, y + 1, { align: 'right' });
   y += 14;
   doc.setDrawColor(220); doc.line(M, y, 210 - M, y); y += 10;
 
@@ -2263,7 +2280,7 @@ async function generateInvoicePDF(facture) {
     doc.setFont('helvetica', 'normal'); doc.setTextColor(40); doc.setFontSize(8.5);
     facture.lignes.forEach(l => {
       if (y > 258) { doc.addPage(); y = M; }
-      cell(new Date(l.date).toLocaleDateString('fr-FR'), M + 2);
+      cell(fdate(l.date), M + 2);
       cell(String(l.prospect).slice(0, 26), M + 24);
       cell(String(l.mode || '—').slice(0, 12), cMode);
       cell(euro(l.encaisse), cEnc, { align: 'right' });
