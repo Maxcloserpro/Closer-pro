@@ -402,6 +402,7 @@ function normalizeProspect(p) {
     offreId: p.offreId || '',
     offreNom: p.offreNom || p.offre || '',
     offre: p.offre || p.offreNom || '', // alias d'affichage rétro-compatible
+    modePaiement: p.modePaiement || '',
     prix: prix,
     tauxCommission: taux,
     commission: null,
@@ -1187,8 +1188,10 @@ function prospectForm(existing) {
       <div class="field"><label>Téléphone</label><input class="input" type="tel" id="f-tel" value="${esc(x.telephone || '')}" placeholder="06 12 34 56 78"></div>
       <div class="field"><label>Écosystème</label><select class="select" id="f-eco"></select></div>
       <div class="field"><label class="flex between items-center"><span>Offre</span><a href="#" id="f-manage-offres" class="link-accent">Gérer →</a></label><select class="select" id="f-offre"></select></div>
-      <div class="field" id="f-prixwrap" style="display:none"><label>Prix du deal (€)</label><input class="input" type="number" id="f-prix" value="${x.prix != null ? x.prix : ''}"></div>
-      <div class="field" id="f-tauxwrap" style="display:none"><label>Taux commission (%)</label><input class="input" type="number" id="f-taux" value="${x.tauxCommission != null ? x.tauxCommission : ''}"></div>
+      <div class="field"><label>Mode de paiement</label><select class="select" id="f-mode"></select></div>
+      <!-- Prix et taux proviennent de l'offre : champs cachés, alimentés automatiquement -->
+      <input type="hidden" id="f-prix" value="${x.prix != null ? x.prix : ''}">
+      <input type="hidden" id="f-taux" value="${x.tauxCommission != null ? x.tauxCommission : ''}">
       <div class="field"><label>Statut</label><select class="select" id="f-statut">${opt(STATUSES, x.statut || 'Appel planifié')}</select></div>
       <div class="field"><label>Date et heure du RDV</label><input class="input" type="datetime-local" id="f-rdv" value="${x.dateRdv ? (x.dateRdv.length <= 10 ? x.dateRdv + 'T09:00' : x.dateRdv.slice(0, 16)) : ''}"></div>
       <div class="field" id="f-closewrap" style="display:none"><label>Date de close</label><input class="input" type="date" id="f-dateclose" value="${x.dateClose || todayISO()}"></div>
@@ -1216,19 +1219,33 @@ function prospectForm(existing) {
     offSel.innerHTML = `<option value="">— Aucune —</option>` +
       list.map(o => `<option value="${o.id}" ${o.id === keepId ? 'selected' : ''}>${esc(o.nom)} · ${eur(o.prix)}</option>`).join('');
   }
-  // Reporte le prix / taux de l'offre choisie sur le formulaire
-  const applyOffre = () => {
+  // Remplit le menu "Mode de paiement" avec les modes définis sur l'offre choisie
+  const modeSel = $('#f-mode');
+  const fillModes = (keep) => {
     const o = offreById(offSel.value);
-    if (o) { $('#f-prix').value = o.prix; $('#f-taux').value = o.tauxCommission; refreshConditionals(); }
+    const modes = o && Array.isArray(o.modesPaiement) ? o.modesPaiement : [];
+    modeSel.innerHTML = `<option value="">— Aucun —</option>` +
+      modes.map(m => `<option value="${esc(m)}" ${m === keep ? 'selected' : ''}>${esc(m)}</option>`).join('');
+    if (keep && !modes.includes(keep)) modeSel.value = ''; // l'offre a changé, mode obsolète
+  };
+  // Reporte le prix / taux + les modes de paiement de l'offre choisie sur le formulaire
+  const applyOffre = (keepMode) => {
+    const o = offreById(offSel.value);
+    if (o) { $('#f-prix').value = o.prix; $('#f-taux').value = o.tauxCommission; }
+    fillModes(keepMode);
+    refreshConditionals();
   };
   fillOffres(x.offreId);
+  fillModes(x.modePaiement);
   ecoSel.onchange = () => {
     fillOffres();
     // Une seule offre active dans cet écosystème : aucun choix à faire, on la pré-remplit.
     const actives = state.offres.filter(o => o.ecosystemeId === ecoSel.value && o.actif);
     if (actives.length === 1) { offSel.value = actives[0].id; applyOffre(); }
+    else fillModes();
   };
-  offSel.onchange = applyOffre;
+  // Changer d'offre met à jour prix/taux et la liste des modes de paiement
+  offSel.onchange = () => applyOffre();
   $('#f-manage-offres').onclick = (e) => { e.preventDefault(); closeModal(); go('ecosystemes'); };
 
   const planCont = $('#f-plan');
@@ -1241,19 +1258,17 @@ function prospectForm(existing) {
   const refreshConditionals = () => {
     const st = $('#f-statut').value;
     const signed = st === 'Closé'; // seul "Closé" porte des infos financières
-    $('#f-prixwrap').style.display = signed ? '' : 'none';
-    $('#f-tauxwrap').style.display = signed ? '' : 'none';
     $('#f-closewrap').style.display = signed ? '' : 'none';
     $('#f-lostwrap').style.display = st === 'Perdu' ? '' : 'none';
     $('#f-planwrap').style.display = signed ? '' : 'none';
-    // Si on passe en signé sans aucune échéance, propose une ligne par défaut
+    // Si on passe en signé sans aucune échéance, propose une ligne par défaut (prix issu de l'offre)
     if (signed && !$$('.plan-row', planCont).length) {
       const prix = Number($('#f-prix').value) || '';
       planCont.insertAdjacentHTML('beforeend', planRowHTML({ montant: prix, datePrevu: $('#f-dateclose').value || todayISO(), dateRecu: null }));
     }
     planCont._update();
   };
-  ['f-statut', 'f-prix', 'f-taux'].forEach(id => $('#' + id).addEventListener('input', refreshConditionals));
+  $('#f-statut').addEventListener('change', refreshConditionals);
   refreshConditionals();
 
   $('#f-save').onclick = () => {
@@ -1274,8 +1289,10 @@ function prospectForm(existing) {
       ecosystemeId: eco ? eco.id : '', ecosystemeNom: eco ? eco.nom : '',
       offreId: off ? off.id : '', offreNom: off ? off.nom : '',
       offre: off ? off.nom : (x.offre || ''),
-      prix: isClose ? ($('#f-prix').value === '' ? null : Number($('#f-prix').value)) : null,
-      tauxCommission: isClose ? ($('#f-taux').value === '' ? null : Number($('#f-taux').value)) : null,
+      modePaiement: $('#f-mode').value,
+      // Prix et taux proviennent de l'offre sélectionnée (plus saisis à la main)
+      prix: isClose ? (off ? off.prix : (x.prix != null ? x.prix : null)) : null,
+      tauxCommission: isClose ? (off ? off.tauxCommission : (x.tauxCommission != null ? x.tauxCommission : null)) : null,
       statut: st, dateRdv: $('#f-rdv').value,
       notes: $('#f-notes').value.trim(),
       dateClose: isClose ? ($('#f-dateclose').value || todayISO()) : '',
@@ -1410,13 +1427,20 @@ function ecoForm(existing) {
   };
 }
 
+const PAYMENT_MODE_PRESETS = ['1 fois', '2 fois', '3 fois', '4 fois', '6 fois', '12 fois'];
+
 function offreForm(ecoId, existing) {
   const x = existing || {};
+  const modes = Array.isArray(x.modesPaiement) ? x.modesPaiement : ['1 fois'];
+  const customModes = modes.filter(m => !PAYMENT_MODE_PRESETS.includes(m));
+  const modeChecks = PAYMENT_MODE_PRESETS.map(m => `<label class="chk-inline"><input type="checkbox" class="of-mode" value="${m}" ${modes.includes(m) ? 'checked' : ''}> ${m}</label>`).join('');
   openModal(`<h3>${existing ? "Modifier l'offre" : 'Nouvelle offre'}</h3>
     <div class="form-grid">
       <div class="field full"><label>Nom</label><input class="input" id="of-nom" value="${esc(x.nom || '')}" placeholder="Ex : Mastermind 6 mois"></div>
       <div class="field"><label>Prix (€)</label><input class="input" type="number" id="of-prix" value="${x.prix != null ? x.prix : ''}"></div>
       <div class="field"><label>Taux de commission (%)</label><input class="input" type="number" id="of-taux" value="${x.tauxCommission != null ? x.tauxCommission : 15}"></div>
+      <div class="field full"><label>Modes de paiement disponibles</label><div class="chk-grid">${modeChecks}</div></div>
+      <div class="field full"><label>Modes personnalisés (séparés par des virgules)</label><input class="input" id="of-custom" value="${esc(customModes.join(', '))}" placeholder="Ex : 5 fois, 10 fois"></div>
       <div class="field full"><label>Description (optionnel)</label><textarea class="textarea" id="of-desc" rows="2">${esc(x.description || '')}</textarea></div>
       <div class="field full"><label class="chk-row"><input type="checkbox" id="of-actif" ${x.actif !== false ? 'checked' : ''}> Offre active (disponible dans le pipeline)</label></div>
     </div>
@@ -1425,7 +1449,11 @@ function offreForm(ecoId, existing) {
   $('#of-save').onclick = () => {
     const nom = $('#of-nom').value.trim();
     if (!nom) { toast('Le nom est requis'); return; }
-    const data = { nom, prix: Number($('#of-prix').value) || 0, tauxCommission: Number($('#of-taux').value) || 0, description: $('#of-desc').value.trim(), actif: $('#of-actif').checked };
+    const presetModes = $$('#modal .of-mode').filter(c => c.checked).map(c => c.value);
+    const custom = $('#of-custom').value.split(',').map(s => s.trim()).filter(Boolean);
+    // Ordonne selon les presets puis les personnalisés, sans doublon.
+    const modesPaiement = [...PAYMENT_MODE_PRESETS.filter(m => presetModes.includes(m)), ...custom.filter(m => !PAYMENT_MODE_PRESETS.includes(m))];
+    const data = { nom, prix: Number($('#of-prix').value) || 0, tauxCommission: Number($('#of-taux').value) || 0, modesPaiement, description: $('#of-desc').value.trim(), actif: $('#of-actif').checked };
     if (existing) Object.assign(existing, data);
     else state.offres.push({ id: uid(), ecosystemeId: ecoId, ...data, createdAt: nowISO() });
     save(); ecoRerender(); toast(existing ? 'Offre mise à jour' : 'Offre créée');
@@ -1902,21 +1930,35 @@ const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juill
 const TVA_MENTION = 'TVA non applicable - article 293 B du CGI';
 
 const clientById = (id) => state.clients.find(c => c.id === id);
-const profilComplet = () => { const p = state.profil || {}; return !!(p.prenom && p.nom && p.adresse && p.cp && p.ville && p.siret); };
+const profilComplet = () => { const p = state.profil || {}; return !!(p.prenom && p.nom && p.telephone && p.email && p.adresse && p.cp && p.ville && p.siret); };
 
-// Commissions ENCAISSÉES (paiement reçu) dans le mois donné, pour l'écosystème du client.
-// Une ligne par versement reçu : date de réception, prospect, montant de commission.
-function invoiceLines(ecoId, annee, mois) {
+// Commission encaissée (part reçue) sur un prospect pendant un mois donné.
+function commissionEncaisseeMois(p, start, end) {
+  return (p.paiements || []).reduce((s, pay) => {
+    if (!pay.dateRecu) return s;
+    const rd = new Date(pay.dateRecu);
+    return (isNaN(rd) || rd < start || rd > end) ? s : s + payCommission(p, pay);
+  }, 0);
+}
+
+// Toutes les commissions CLOSÉES sur la période (dateClose dans le mois), tous écosystèmes.
+// Chaque ligne = un close : date, prospect, email, commission totale du deal,
+// mode de paiement, et commission encaissée ce mois-ci.
+function invoiceLines(annee, mois) {
   const start = new Date(annee, mois - 1, 1);
   const end = new Date(annee, mois, 0, 23, 59, 59, 999);
   const lines = [];
   signedProspects().forEach(p => {
-    if (p.ecosystemeId !== ecoId) return;
-    (p.paiements || []).forEach(pay => {
-      if (!pay.dateRecu) return;
-      const rd = new Date(pay.dateRecu);
-      if (isNaN(rd) || rd < start || rd > end) return;
-      lines.push({ date: pay.dateRecu, prospect: p.nom, montant: payCommission(p, pay) });
+    if (!p.dateClose) return;
+    const dc = new Date(p.dateClose);
+    if (isNaN(dc) || dc < start || dc > end) return;
+    lines.push({
+      date: p.dateClose,
+      prospect: p.nom,
+      email: p.email || '',
+      commission: calcCommission(p) || 0,
+      mode: p.modePaiement || '',
+      encaisse: commissionEncaisseeMois(p, start, end)
     });
   });
   lines.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1951,25 +1993,22 @@ function renderFacturation() {
   const profilCard = profilComplet()
     ? `<div class="fact-profil-grid">
         <div><span class="ds-lbl">Émetteur</span><div class="fact-strong">${esc(p.prenom)} ${esc(p.nom)}</div></div>
+        <div><span class="ds-lbl">Contact</span><div>${esc(p.telephone)}<br>${esc(p.email)}</div></div>
         <div><span class="ds-lbl">Adresse</span><div>${esc(p.adresse)}<br>${esc(p.cp)} ${esc(p.ville)}</div></div>
-        <div><span class="ds-lbl">SIRET</span><div>${esc(p.siret)}</div></div>
-        ${p.iban ? `<div><span class="ds-lbl">IBAN</span><div>${esc(p.iban)}</div></div>` : ''}
+        <div><span class="ds-lbl">SIRET</span><div>${esc(p.siret)}${p.iban ? '<br><span class="ds-lbl">IBAN</span> ' + esc(p.iban) : ''}</div></div>
       </div>`
     : `<div class="fact-empty">Renseigne ton profil pour pouvoir générer des factures.</div>`;
 
-  const clientRows = state.clients.length ? state.clients.map(c => {
-    const eco = ecoById(c.ecosystemeId);
-    return `<tr>
+  const clientRows = state.clients.length ? state.clients.map(c => `<tr>
       <td class="t-strong" data-label="Client">${esc(c.societe)}</td>
-      <td class="muted" data-label="Écosystème">${eco ? esc(eco.nom) : '<span style="color:var(--red)">— non lié —</span>'}</td>
+      <td class="muted" data-label="Téléphone">${esc(c.telephone || '—')}</td>
+      <td class="muted" data-label="Email">${esc(c.email || '—')}</td>
       <td class="muted" data-label="Ville">${esc(c.ville || '—')}</td>
       <td class="muted" data-label="SIRET">${esc(c.siret || '—')}</td>
-      <td class="muted" data-label="Email">${esc(c.email || '—')}</td>
       <td class="t-right t-actions" style="white-space:nowrap">
         <button class="btn btn-ghost btn-sm" data-edit-client="${c.id}">Modifier</button>
         <button class="btn btn-danger btn-sm" data-del-client="${c.id}">✕</button>
-      </td></tr>`;
-  }).join('') : `<tr class="crm-empty"><td colspan="6" class="muted" style="text-align:center;padding:24px">Aucun client. Ajoute ton premier infopreneur / HOS.</td></tr>`;
+      </td></tr>`).join('') : `<tr class="crm-empty"><td colspan="6" class="muted" style="text-align:center;padding:24px">Aucun client. Ajoute ton premier infopreneur / HOS.</td></tr>`;
 
   const factures = [...state.factures].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const histRows = factures.length ? factures.map(f => `<tr>
@@ -1977,11 +2016,12 @@ function renderFacturation() {
     <td data-label="Date">${fmtDate(f.createdAt)}</td>
     <td data-label="Client">${esc(f.clientSnap ? f.clientSnap.societe : '—')}</td>
     <td data-label="Période">${MONTHS_FR[f.mois - 1]} ${f.annee}</td>
+    <td data-label="Mode"><span class="badge badge-${f.mode === 'detaille' ? 'blue' : 'gray'}">${f.mode === 'detaille' ? 'Détaillé' : 'Simplifié'}</span></td>
     <td class="t-right t-num" data-label="Montant" style="color:var(--rev)">${eur(f.total)}</td>
     <td class="t-right t-actions" style="white-space:nowrap">
       <button class="btn btn-ghost btn-sm" data-dl-facture="${f.id}">PDF</button>
       <button class="btn btn-danger btn-sm" data-del-facture="${f.id}">✕</button>
-    </td></tr>`).join('') : `<tr class="crm-empty"><td colspan="6" class="muted" style="text-align:center;padding:24px">Aucune facture générée pour l'instant.</td></tr>`;
+    </td></tr>`).join('') : `<tr class="crm-empty"><td colspan="7" class="muted" style="text-align:center;padding:24px">Aucune facture générée pour l'instant.</td></tr>`;
 
   $('#page-facturation').innerHTML = `
     <div class="page-head">
@@ -1997,14 +2037,14 @@ function renderFacturation() {
     <div class="card mb">
       <div class="flex between items-center" style="margin-bottom:14px"><div class="kpic-label">Mes clients</div><button class="btn btn-ghost btn-sm" id="fact-client-add">${ICONS.plus} Ajouter un client</button></div>
       <div class="table-scroll"><table class="stat-table crm-table">
-        <thead><tr><th>Client</th><th>Écosystème</th><th>Ville</th><th>SIRET</th><th>Email</th><th class="t-right">Actions</th></tr></thead>
+        <thead><tr><th>Client</th><th>Téléphone</th><th>Email</th><th>Ville</th><th>SIRET</th><th class="t-right">Actions</th></tr></thead>
         <tbody>${clientRows}</tbody></table></div>
     </div>
 
     <div class="card">
       <div class="kpic-label" style="margin-bottom:14px">Historique des factures</div>
       <div class="table-scroll"><table class="stat-table crm-table">
-        <thead><tr><th>Numéro</th><th>Date</th><th>Client</th><th>Période</th><th class="t-right">Montant</th><th class="t-right">Actions</th></tr></thead>
+        <thead><tr><th>Numéro</th><th>Date</th><th>Client</th><th>Période</th><th>Mode</th><th class="t-right">Montant</th><th class="t-right">Actions</th></tr></thead>
         <tbody>${histRows}</tbody></table></div>
     </div>`;
 
@@ -2031,6 +2071,8 @@ function profilForm() {
     <div class="form-grid">
       <div class="field"><label>Prénom</label><input class="input" id="pf-prenom" value="${esc(p.prenom || '')}"></div>
       <div class="field"><label>Nom</label><input class="input" id="pf-nom" value="${esc(p.nom || '')}"></div>
+      <div class="field"><label>Téléphone</label><input class="input" type="tel" id="pf-tel" value="${esc(p.telephone || '')}"></div>
+      <div class="field"><label>Email</label><input class="input" type="email" id="pf-email" value="${esc(p.email || '')}"></div>
       <div class="field full"><label>Adresse</label><input class="input" id="pf-adresse" value="${esc(p.adresse || '')}"></div>
       <div class="field"><label>Code postal</label><input class="input" id="pf-cp" value="${esc(p.cp || '')}"></div>
       <div class="field"><label>Ville</label><input class="input" id="pf-ville" value="${esc(p.ville || '')}"></div>
@@ -2041,37 +2083,36 @@ function profilForm() {
   $('#pf-save').onclick = () => {
     const data = {
       prenom: $('#pf-prenom').value.trim(), nom: $('#pf-nom').value.trim(),
+      telephone: $('#pf-tel').value.trim(), email: $('#pf-email').value.trim(),
       adresse: $('#pf-adresse').value.trim(), cp: $('#pf-cp').value.trim(),
       ville: $('#pf-ville').value.trim(), siret: $('#pf-siret').value.trim(),
       iban: $('#pf-iban').value.trim()
     };
-    if (!data.prenom || !data.nom || !data.adresse || !data.cp || !data.ville || !data.siret) { toast('Tous les champs sont requis (sauf IBAN)'); return; }
+    if (!data.prenom || !data.nom || !data.telephone || !data.email || !data.adresse || !data.cp || !data.ville || !data.siret) { toast('Tous les champs sont requis (sauf IBAN)'); return; }
     state.profil = data; save(); closeModal(); renderFacturation(); toast('Profil enregistré');
   };
 }
 
 function clientForm(existing) {
   const c = existing || {};
-  const ecoOpts = `<option value="">— Aucun —</option>` + state.ecosystemes.map(e => `<option value="${e.id}" ${e.id === c.ecosystemeId ? 'selected' : ''}>${esc(e.nom)}</option>`).join('');
   openModal(`<h3>${existing ? 'Modifier le client' : 'Nouveau client'}</h3>
     <div class="form-grid">
       <div class="field full"><label>Nom société ou nom / prénom</label><input class="input" id="cl-societe" value="${esc(c.societe || '')}"></div>
-      <div class="field full"><label>Écosystème facturé</label><select class="select" id="cl-eco">${ecoOpts}</select></div>
+      <div class="field"><label>Téléphone</label><input class="input" type="tel" id="cl-tel" value="${esc(c.telephone || '')}"></div>
+      <div class="field"><label>Email de facturation</label><input class="input" type="email" id="cl-email" value="${esc(c.email || '')}"></div>
       <div class="field full"><label>Adresse</label><input class="input" id="cl-adresse" value="${esc(c.adresse || '')}"></div>
       <div class="field"><label>Code postal</label><input class="input" id="cl-cp" value="${esc(c.cp || '')}"></div>
       <div class="field"><label>Ville</label><input class="input" id="cl-ville" value="${esc(c.ville || '')}"></div>
-      <div class="field"><label>SIRET</label><input class="input" id="cl-siret" value="${esc(c.siret || '')}"></div>
-      <div class="field"><label>Email de facturation</label><input class="input" type="email" id="cl-email" value="${esc(c.email || '')}"></div>
+      <div class="field full"><label>SIRET</label><input class="input" id="cl-siret" value="${esc(c.siret || '')}"></div>
     </div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" id="cl-save">Enregistrer</button></div>`, { wide: true });
   $('#cl-save').onclick = () => {
     const societe = $('#cl-societe').value.trim();
     if (!societe) { toast('Le nom du client est requis'); return; }
     const data = {
-      societe, ecosystemeId: $('#cl-eco').value,
+      societe, telephone: $('#cl-tel').value.trim(), email: $('#cl-email').value.trim(),
       adresse: $('#cl-adresse').value.trim(), cp: $('#cl-cp').value.trim(),
-      ville: $('#cl-ville').value.trim(), siret: $('#cl-siret').value.trim(),
-      email: $('#cl-email').value.trim()
+      ville: $('#cl-ville').value.trim(), siret: $('#cl-siret').value.trim()
     };
     if (existing) Object.assign(existing, data);
     else state.clients.push({ id: uid(), ...data, createdAt: nowISO() });
@@ -2097,43 +2138,45 @@ function invoiceModal() {
     <div id="iv-preview" class="fact-preview"></div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" id="iv-go">Générer le PDF</button></div>`, { wide: true });
 
+  // Résumé "mode de paiement global" : un seul mode -> ce mode ; plusieurs -> liste.
+  const globalMode = (lines) => {
+    const set = [...new Set(lines.map(l => l.mode).filter(Boolean))];
+    return set.length === 0 ? '—' : set.length === 1 ? set[0] : 'Plusieurs modes';
+  };
+
   const refresh = () => {
-    const c = clientById($('#iv-client').value);
     const mois = Number($('#iv-mois').value), annee = Number($('#iv-annee').value);
     const box = $('#iv-preview');
-    if (!c || !c.ecosystemeId) {
-      box.innerHTML = `<div class="import-warn">Ce client n'est lié à aucun écosystème. Modifie-le pour choisir l'écosystème à facturer.</div>`;
-      $('#iv-go').disabled = true; return;
-    }
-    const lines = invoiceLines(c.ecosystemeId, annee, mois);
-    const total = lines.reduce((s, l) => s + l.montant, 0);
-    const eco = ecoById(c.ecosystemeId);
+    const lines = invoiceLines(annee, mois);
+    const total = lines.reduce((s, l) => s + l.commission, 0);
+    const encaisse = lines.reduce((s, l) => s + l.encaisse, 0);
     if (!lines.length) {
-      box.innerHTML = `<div class="fact-empty">Aucune commission encaissée en ${MONTHS_FR[mois - 1]} ${annee} pour l'écosystème « ${esc(eco ? eco.nom : '')} ».</div>`;
+      box.innerHTML = `<div class="fact-empty">Aucune commission closée en ${MONTHS_FR[mois - 1]} ${annee}.</div>`;
       $('#iv-go').disabled = true; return;
     }
-    box.innerHTML = `<div class="fact-prev-head">${lines.length} commission(s) · écosystème « ${esc(eco.nom)} »</div>
-      <div class="fact-prev-total">Total à facturer : <b>${eur(total)}</b></div>`;
+    box.innerHTML = `<div class="fact-prev-head">${lines.length} close(s) · mode : ${esc(globalMode(lines))}</div>
+      <div class="fact-prev-total">Total commissions : <b>${eur(total)}</b> · encaissé ce mois : <b>${eur(encaisse)}</b></div>`;
     $('#iv-go').disabled = false;
   };
-  $('#iv-client').onchange = refresh; $('#iv-mois').onchange = refresh; $('#iv-annee').onchange = refresh;
+  $('#iv-mois').onchange = refresh; $('#iv-annee').onchange = refresh;
   refresh();
 
   $('#iv-go').onclick = async () => {
     const c = clientById($('#iv-client').value);
     const mois = Number($('#iv-mois').value), annee = Number($('#iv-annee').value);
-    const lines = invoiceLines(c.ecosystemeId, annee, mois);
+    const lines = invoiceLines(annee, mois);
     if (!lines.length) { toast('Aucune commission sur cette période'); return; }
-    const total = lines.reduce((s, l) => s + l.montant, 0);
+    const total = lines.reduce((s, l) => s + l.commission, 0);
+    const encaisse = lines.reduce((s, l) => s + l.encaisse, 0);
     const num = nextInvoiceNumber(annee);
 
     const facture = {
       id: uid(), numero: num.numero, seq: num.seq, annee, mois,
-      clientId: c.id, ecosystemeId: c.ecosystemeId,
-      mode: $('#iv-mode').value, lignes: lines, total,
+      clientId: c.id,
+      mode: $('#iv-mode').value, lignes: lines, total, encaisse, modeGlobal: globalMode(lines),
       createdAt: nowISO(),
       emetteurSnap: { ...state.profil },
-      clientSnap: { societe: c.societe, adresse: c.adresse, cp: c.cp, ville: c.ville, siret: c.siret, email: c.email }
+      clientSnap: { societe: c.societe, telephone: c.telephone, email: c.email, adresse: c.adresse, cp: c.cp, ville: c.ville, siret: c.siret }
     };
 
     const btn = $('#iv-go'); btn.disabled = true; btn.textContent = 'Génération…';
@@ -2170,47 +2213,60 @@ async function generateInvoicePDF(facture) {
   y += 14;
   doc.setDrawColor(220); doc.line(M, y, 210 - M, y); y += 10;
 
-  // Émetteur / Client
+  // Émetteur / Client — coordonnées complètes (nom, adresse, tel, email, SIRET)
   doc.setFontSize(9); doc.setTextColor(130);
   doc.text('ÉMETTEUR', M, y); doc.text('CLIENT', 115, y); y += 5;
-  doc.setFontSize(10); doc.setTextColor(30);
-  const emLines = [`${em.prenom || ''} ${em.nom || ''}`, em.adresse || '', `${em.cp || ''} ${em.ville || ''}`, `SIRET : ${em.siret || ''}`];
-  const clLines = [cl.societe || '', cl.adresse || '', `${cl.cp || ''} ${cl.ville || ''}`, cl.siret ? `SIRET : ${cl.siret}` : ''];
+  doc.setFontSize(9.5); doc.setTextColor(30);
+  const emLines = [`${em.prenom || ''} ${em.nom || ''}`, em.adresse || '', `${em.cp || ''} ${em.ville || ''}`, em.telephone ? `Tél : ${em.telephone}` : '', em.email || '', `SIRET : ${em.siret || ''}`].filter(l => l !== '');
+  const clLines = [cl.societe || '', cl.adresse || '', `${cl.cp || ''} ${cl.ville || ''}`, cl.telephone ? `Tél : ${cl.telephone}` : '', cl.email || '', cl.siret ? `SIRET : ${cl.siret}` : ''].filter(l => l !== '');
   const baseY = y;
-  emLines.forEach((l, i) => doc.text(l, M, baseY + i * 5));
-  clLines.forEach((l, i) => { if (l) doc.text(l, 115, baseY + i * 5); });
-  y = baseY + 4 * 5 + 8;
+  emLines.forEach((l, i) => doc.text(l, M, baseY + i * 4.6));
+  clLines.forEach((l, i) => doc.text(l, 115, baseY + i * 4.6));
+  y = baseY + Math.max(emLines.length, clLines.length) * 4.6 + 8;
 
   // Objet
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20);
   doc.text(`Prestation de closing — commissions ${MONTHS_FR[facture.mois - 1]} ${facture.annee}`, M, y);
   y += 10;
 
-  // Tableau
   const right = 210 - M;
-  doc.setFillColor(245, 243, 240); doc.rect(M, y - 5, right - M, 8, 'F');
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(80);
+  const cell = (txt, x, opt) => doc.text(String(txt), x, y, opt);
   if (facture.mode === 'detaille') {
-    doc.text('DATE', M + 2, y); doc.text('PROSPECT', M + 30, y); doc.text('COMMISSION', right - 2, y, { align: 'right' });
-    y += 8; doc.setFont('helvetica', 'normal'); doc.setTextColor(40);
+    // Colonnes : Date | Prospect (+ email) | Mode | Commission | Encaissé mois
+    const cMode = 108, cComm = 150, cEnc = right;
+    doc.setFillColor(245, 243, 240); doc.rect(M, y - 5, right - M, 8, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80);
+    cell('DATE', M + 2); cell('PROSPECT', M + 24); cell('MODE', cMode); cell('COMMISSION', cComm, { align: 'right' }); cell('ENCAISSÉ', cEnc - 2, { align: 'right' });
+    y += 7;
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(40); doc.setFontSize(8.5);
     facture.lignes.forEach(l => {
-      if (y > 260) { doc.addPage(); y = M; }
-      doc.text(new Date(l.date).toLocaleDateString('fr-FR'), M + 2, y);
-      doc.text(String(l.prospect).slice(0, 45), M + 30, y);
-      doc.text(euro(l.montant), right - 2, y, { align: 'right' });
+      if (y > 258) { doc.addPage(); y = M; }
+      cell(new Date(l.date).toLocaleDateString('fr-FR'), M + 2);
+      cell(String(l.prospect).slice(0, 26), M + 24);
+      cell(String(l.mode || '—').slice(0, 12), cMode);
+      cell(euro(l.commission), cComm, { align: 'right' });
+      cell(euro(l.encaisse), cEnc - 2, { align: 'right' });
+      if (l.email) { y += 3.6; doc.setTextColor(150); doc.setFontSize(7); cell(String(l.email).slice(0, 40), M + 24); doc.setTextColor(40); doc.setFontSize(8.5); }
       y += 6;
     });
   } else {
-    doc.text('DÉSIGNATION', M + 2, y); doc.text('MONTANT', right - 2, y, { align: 'right' });
-    y += 8; doc.setFont('helvetica', 'normal'); doc.setTextColor(40);
-    doc.text(`Commissions de closing — ${facture.lignes.length} vente(s)`, M + 2, y);
-    doc.text(euro(facture.total), right - 2, y, { align: 'right' });
-    y += 6;
+    doc.setFillColor(245, 243, 240); doc.rect(M, y - 5, right - M, 8, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(80);
+    cell('DÉSIGNATION', M + 2); cell('MONTANT', right - 2, { align: 'right' });
+    y += 8; doc.setFont('helvetica', 'normal'); doc.setTextColor(40); doc.setFontSize(9.5);
+    cell(`Commissions de closing — ${facture.lignes.length} vente(s)`, M + 2);
+    cell(euro(facture.total), right - 2, { align: 'right' });
+    y += 7;
+    cell(`Mode de paiement : ${facture.modeGlobal || '—'}`, M + 2); y += 6;
+    cell(`Montant encaissé ce mois-ci : ${euro(facture.encaisse)}`, M + 2); y += 6;
   }
 
   y += 4; doc.setDrawColor(220); doc.line(M, y, right, y); y += 8;
   doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(20);
-  doc.text('TOTAL', right - 45, y); doc.text(euro(facture.total), right - 2, y, { align: 'right' });
+  doc.text('TOTAL COMMISSIONS', right - 60, y); doc.text(euro(facture.total), right - 2, y, { align: 'right' });
+  y += 7;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(90);
+  doc.text(`Dont encaissé ce mois-ci : ${euro(facture.encaisse)}`, right - 2, y, { align: 'right' });
   y += 12;
 
   // Mentions légales

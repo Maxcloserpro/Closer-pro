@@ -763,6 +763,9 @@ tfoot td { padding: 12px 16px; }
 
 .chk-row { display: flex; align-items: center; gap: 9px; font-size: 13.5px; color: var(--text); cursor: pointer; font-weight: 500; }
 .chk-row input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+.chk-grid { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.chk-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; }
+.chk-inline input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
 
 /* ==========================================================================
    Statistiques
