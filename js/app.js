@@ -341,10 +341,37 @@ function importDataFile(file) {
   reader.readAsText(file);
 }
 
-// Commission auto-calculée à partir du prix et du taux
+// Types de commission d'une offre / d'un deal
+const COMMISSION_TYPES = ['percent', 'fixed', 'fixed_pif'];
+
+// Paiement intégral en une fois (PIF) : mode "1 fois", sinon une seule échéance.
+function isPIF(p) {
+  const m = (p.modePaiement || '').trim();
+  if (m) return /^1\s*fois/i.test(m);
+  return Array.isArray(p.paiements) && p.paiements.length === 1;
+}
+
+// Commission TOTALE d'un deal selon son type (pourcentage / fixe / fixe + prime PIF).
+function dealCommission(p) {
+  if (!p) return 0;
+  const type = p.commissionType || 'percent';
+  if (type === 'fixed' || type === 'fixed_pif') {
+    const base = Number(p.montantFixe) || 0;
+    const prime = (type === 'fixed_pif' && isPIF(p)) ? (Number(p.primePif) || 0) : 0;
+    return base + prime;
+  }
+  return Math.round((Number(p.prix) || 0) * (Number(p.tauxCommission) || 0) / 100);
+}
+
+// Commission auto-calculée (null si les données nécessaires manquent)
 function calcCommission(p) {
-  if (p && p.prix != null && p.prix !== '' && p.tauxCommission != null && p.tauxCommission !== '') {
-    return Math.round(Number(p.prix) * Number(p.tauxCommission) / 100);
+  if (!p) return null;
+  const type = p.commissionType || 'percent';
+  if (type === 'fixed' || type === 'fixed_pif') {
+    return (p.montantFixe != null && p.montantFixe !== '') ? dealCommission(p) : null;
+  }
+  if (p.prix != null && p.prix !== '' && p.tauxCommission != null && p.tauxCommission !== '') {
+    return dealCommission(p);
   }
   return null;
 }
@@ -405,6 +432,9 @@ function normalizeProspect(p) {
     modePaiement: p.modePaiement || '',
     prix: prix,
     tauxCommission: taux,
+    commissionType: COMMISSION_TYPES.includes(p.commissionType) ? p.commissionType : 'percent',
+    montantFixe: p.montantFixe != null ? p.montantFixe : null,
+    primePif: p.primePif != null ? p.primePif : null,
     commission: null,
     statut: statut,
     dateRdv: p.dateRdv != null ? p.dateRdv : (p.rdv || ''),
@@ -479,7 +509,17 @@ const offreById = (id) => state.offres.find(o => o.id === id);
 const offresOf = (ecoId) => state.offres.filter(o => o.ecosystemeId === ecoId);
 
 // ---- Helpers paiements / cash ----
-const payCommission = (p, pay) => Math.round((Number(pay.montant) || 0) * (Number(p.tauxCommission) || 0) / 100);
+// Commission d'un versement. Pour un montant fixe, la commission totale du deal
+// est répartie au prorata du versement sur le prix (le suivi "encaissé" reste cohérent).
+function payCommission(p, pay) {
+  const type = p.commissionType || 'percent';
+  if (type === 'fixed' || type === 'fixed_pif') {
+    const prix = Number(p.prix) || 0;
+    if (prix <= 0) return 0;
+    return Math.round(dealCommission(p) * (Number(pay.montant) || 0) / prix);
+  }
+  return Math.round((Number(pay.montant) || 0) * (Number(p.tauxCommission) || 0) / 100);
+}
 const contractedCash = (p) => Number(p.prix) || 0;
 const collectedCash = (p) => (p.paiements || []).filter(x => x.dateRecu).reduce((s, x) => s + (Number(x.montant) || 0), 0);
 
@@ -1292,9 +1332,12 @@ function prospectForm(existing) {
       offreId: off ? off.id : '', offreNom: off ? off.nom : '',
       offre: off ? off.nom : (x.offre || ''),
       modePaiement: $('#f-mode').value,
-      // Prix et taux proviennent de l'offre sélectionnée (plus saisis à la main)
+      // Prix, taux et type de commission proviennent de l'offre sélectionnée
       prix: isClose ? (off ? off.prix : (x.prix != null ? x.prix : null)) : null,
       tauxCommission: isClose ? (off ? off.tauxCommission : (x.tauxCommission != null ? x.tauxCommission : null)) : null,
+      commissionType: off ? (off.commissionType || 'percent') : (x.commissionType || 'percent'),
+      montantFixe: isClose ? (off ? (off.montantFixe != null ? off.montantFixe : null) : (x.montantFixe != null ? x.montantFixe : null)) : null,
+      primePif: isClose ? (off ? (off.primePif != null ? off.primePif : null) : (x.primePif != null ? x.primePif : null)) : null,
       statut: st, dateRdv: $('#f-rdv').value,
       notes: $('#f-notes').value.trim(),
       dateClose: isClose ? ($('#f-dateclose').value || todayISO()) : '',
@@ -1320,6 +1363,21 @@ function prospectForm(existing) {
 let CURRENT_ECO = null;
 let ECO_CTX = 'page'; // 'page' (page dédiée) ou 'modal' (depuis le CRM)
 
+// Libellé du type de commission d'une offre (carte offre)
+function offreCommLabel(o) {
+  const t = o.commissionType || 'percent';
+  if (t === 'fixed') return 'Montant fixe';
+  if (t === 'fixed_pif') return 'Fixe + prime PIF';
+  return `${o.tauxCommission || 0}% commission`;
+}
+// Montant de commission par vente affiché sur la carte offre
+function offreCommValue(o) {
+  const t = o.commissionType || 'percent';
+  if (t === 'fixed') return `${eur(o.montantFixe || 0)} / close`;
+  if (t === 'fixed_pif') return `${eur(o.montantFixe || 0)} / close + ${eur(o.primePif || 0)} PIF`;
+  return `${eur(Math.round((o.prix || 0) * (o.tauxCommission || 0) / 100))} / vente`;
+}
+
 // Contenu réutilisable (liste écosystèmes + offres) — identique pour la page et la modale
 function ecoUIHtml() {
   const ecos = state.ecosystemes;
@@ -1327,10 +1385,16 @@ function ecoUIHtml() {
 
   const ecoItems = ecos.length ? ecos.map(e => {
     const n = offresOf(e.id).length;
-    return `<button class="eco-item ${e.id === CURRENT_ECO ? 'active' : ''}" data-eco="${e.id}">
-      <div class="eco-item-name">${esc(e.nom)}</div>
-      <div class="eco-item-sub">${n} offre${n > 1 ? 's' : ''}</div>
-    </button>`;
+    return `<div class="eco-item ${e.id === CURRENT_ECO ? 'active' : ''}">
+      <button class="eco-item-main" data-eco="${e.id}">
+        <div class="eco-item-name">${esc(e.nom)}</div>
+        <div class="eco-item-sub">${n} offre${n > 1 ? 's' : ''}</div>
+      </button>
+      <div class="eco-item-actions">
+        <button class="eco-mini" data-edit-eco="${e.id}" title="Modifier">${ICONS.edit || '✎'}</button>
+        <button class="eco-mini eco-mini-del" data-del-eco="${e.id}" title="Supprimer">✕</button>
+      </div>
+    </div>`;
   }).join('') : '<div class="muted" style="padding:18px 8px;font-size:13px">Aucun écosystème. Crée le premier.</div>';
 
   const eco = CURRENT_ECO ? ecoById(CURRENT_ECO) : null;
@@ -1342,8 +1406,8 @@ function ecoUIHtml() {
     </div>
     <div class="offre-meta">
       <span class="t-strong">${eur(o.prix)}</span>
-      <span class="muted">${o.tauxCommission}% commission</span>
-      <span style="color:var(--green);font-weight:600">${eur(Math.round(o.prix * o.tauxCommission / 100))} / vente</span>
+      <span class="muted">${offreCommLabel(o)}</span>
+      <span style="color:var(--green);font-weight:600">${offreCommValue(o)}</span>
     </div>
     <div class="offre-actions">
       <button class="btn btn-ghost btn-sm" data-edit-off="${o.id}">Modifier</button>
@@ -1369,6 +1433,8 @@ function wireEcoUI(root) {
   const eco = CURRENT_ECO ? ecoById(CURRENT_ECO) : null;
   $$('[data-eco]', root).forEach(b => b.onclick = () => { CURRENT_ECO = b.dataset.eco; ecoRerender(); });
   const ea = $('#eco-add', root); if (ea) ea.onclick = () => ecoForm();
+  $$('[data-edit-eco]', root).forEach(b => b.onclick = () => ecoForm(ecoById(b.dataset.editEco)));
+  $$('[data-del-eco]', root).forEach(b => b.onclick = () => deleteEcosystemeConfirm(ecoById(b.dataset.delEco)));
   const oa = $('#off-add', root); if (oa && eco) oa.onclick = () => offreForm(eco.id);
   $$('[data-edit-off]', root).forEach(b => b.onclick = () => offreForm(eco.id, offreById(b.dataset.editOff)));
   $$('[data-arch-off]', root).forEach(b => b.onclick = () => {
@@ -1416,16 +1482,21 @@ function ecoForm(existing) {
     else { const e = { id: uid(), nom, description: $('#eco-desc').value.trim(), createdAt: nowISO() }; state.ecosystemes.push(e); CURRENT_ECO = e.id; }
     save(); ecoRerender(); toast(existing ? 'Écosystème mis à jour' : 'Écosystème créé');
   };
-  if (existing) $('#eco-del').onclick = () => {
-    const nbOff = offresOf(existing.id).length;
-    openModal(`<h3>Supprimer l'écosystème ?</h3><p class="hint" style="margin-bottom:16px">« ${esc(existing.nom)} » et ses ${nbOff} offre(s) seront supprimés.</p>
-      <div class="modal-actions"><button class="btn btn-ghost" id="ed-cancel">Annuler</button><button class="btn btn-danger" id="ed-confirm">Supprimer</button></div>`);
-    $('#ed-cancel').onclick = ecoCancel;
-    $('#ed-confirm').onclick = () => {
-      state.offres = state.offres.filter(o => o.ecosystemeId !== existing.id);
-      state.ecosystemes = state.ecosystemes.filter(e => e.id !== existing.id);
-      CURRENT_ECO = null; save(); ecoRerender(); toast('Écosystème supprimé');
-    };
+  if (existing) $('#eco-del').onclick = () => deleteEcosystemeConfirm(existing);
+}
+
+// Confirmation + suppression d'un écosystème (et de ses offres)
+function deleteEcosystemeConfirm(eco) {
+  if (!eco) return;
+  const nbOff = offresOf(eco.id).length;
+  openModal(`<h3>Supprimer l'écosystème ?</h3><p class="hint" style="margin-bottom:16px">« ${esc(eco.nom)} » et ses ${nbOff} offre(s) seront supprimés. Les prospects déjà rattachés conservent leur historique.</p>
+    <div class="modal-actions"><button class="btn btn-ghost" id="ed-cancel">Annuler</button><button class="btn btn-danger" id="ed-confirm">Supprimer</button></div>`);
+  $('#ed-cancel').onclick = ecoCancel;
+  $('#ed-confirm').onclick = () => {
+    state.offres = state.offres.filter(o => o.ecosystemeId !== eco.id);
+    state.ecosystemes = state.ecosystemes.filter(e => e.id !== eco.id);
+    if (CURRENT_ECO === eco.id) CURRENT_ECO = null;
+    save(); ecoRerender(); toast('Écosystème supprimé');
   };
 }
 
@@ -1436,26 +1507,53 @@ function offreForm(ecoId, existing) {
   const modes = Array.isArray(x.modesPaiement) ? x.modesPaiement : ['1 fois'];
   const customModes = modes.filter(m => !PAYMENT_MODE_PRESETS.includes(m));
   const modeChecks = PAYMENT_MODE_PRESETS.map(m => `<label class="chk-inline"><input type="checkbox" class="of-mode" value="${m}" ${modes.includes(m) ? 'checked' : ''}> ${m}</label>`).join('');
+  const comType = COMMISSION_TYPES.includes(x.commissionType) ? x.commissionType : 'percent';
+  const typeOpt = (v, l) => `<option value="${v}" ${v === comType ? 'selected' : ''}>${l}</option>`;
   openModal(`<h3>${existing ? "Modifier l'offre" : 'Nouvelle offre'}</h3>
     <div class="form-grid">
       <div class="field full"><label>Nom</label><input class="input" id="of-nom" value="${esc(x.nom || '')}" placeholder="Ex : Mastermind 6 mois"></div>
       <div class="field"><label>Prix (€)</label><input class="input" type="number" id="of-prix" value="${x.prix != null ? x.prix : ''}"></div>
-      <div class="field"><label>Taux de commission (%)</label><input class="input" type="number" id="of-taux" value="${x.tauxCommission != null ? x.tauxCommission : 15}"></div>
+      <div class="field"><label>Type de commission</label><select class="select" id="of-comtype">${typeOpt('percent', 'Pourcentage')}${typeOpt('fixed', 'Montant fixe')}${typeOpt('fixed_pif', 'Montant fixe + prime PIF')}</select></div>
+      <div class="field" id="of-taux-wrap"><label>Taux de commission (%)</label><input class="input" type="number" id="of-taux" value="${x.tauxCommission != null ? x.tauxCommission : 15}"></div>
+      <div class="field" id="of-fixe-wrap"><label>Montant fixe (€ / close)</label><input class="input" type="number" id="of-montantfixe" value="${x.montantFixe != null ? x.montantFixe : ''}" placeholder="Ex : 450"></div>
+      <div class="field" id="of-prime-wrap"><label>Prime PIF (€ si payé en 1 fois)</label><input class="input" type="number" id="of-primepif" value="${x.primePif != null ? x.primePif : ''}" placeholder="Ex : 100"></div>
       <div class="field full"><label>Modes de paiement disponibles</label><div class="chk-grid">${modeChecks}</div></div>
       <div class="field full"><label>Modes personnalisés (séparés par des virgules)</label><input class="input" id="of-custom" value="${esc(customModes.join(', '))}" placeholder="Ex : 5 fois, 10 fois"></div>
       <div class="field full"><label>Description (optionnel)</label><textarea class="textarea" id="of-desc" rows="2">${esc(x.description || '')}</textarea></div>
       <div class="field full"><label class="chk-row"><input type="checkbox" id="of-actif" ${x.actif !== false ? 'checked' : ''}> Offre active (disponible dans le pipeline)</label></div>
     </div>
     <div class="modal-actions"><button class="btn btn-ghost" id="of-cancel">Annuler</button><button class="btn btn-primary" id="of-save">Enregistrer</button></div>`);
+
+  // Affiche uniquement les champs pertinents selon le type de commission
+  const syncComFields = () => {
+    const t = $('#of-comtype').value;
+    $('#of-taux-wrap').style.display = t === 'percent' ? '' : 'none';
+    $('#of-fixe-wrap').style.display = t === 'percent' ? 'none' : '';
+    $('#of-prime-wrap').style.display = t === 'fixed_pif' ? '' : 'none';
+  };
+  $('#of-comtype').onchange = syncComFields;
+  syncComFields();
+
   $('#of-cancel').onclick = ecoCancel;
   $('#of-save').onclick = () => {
     const nom = $('#of-nom').value.trim();
     if (!nom) { toast('Le nom est requis'); return; }
+    const commissionType = $('#of-comtype').value;
+    if (commissionType !== 'percent' && !($('#of-montantfixe').value !== '' && Number($('#of-montantfixe').value) > 0)) {
+      toast('Renseigne le montant fixe de la commission'); return;
+    }
     const presetModes = $$('#modal .of-mode').filter(c => c.checked).map(c => c.value);
     const custom = $('#of-custom').value.split(',').map(s => s.trim()).filter(Boolean);
     // Ordonne selon les presets puis les personnalisés, sans doublon.
     const modesPaiement = [...PAYMENT_MODE_PRESETS.filter(m => presetModes.includes(m)), ...custom.filter(m => !PAYMENT_MODE_PRESETS.includes(m))];
-    const data = { nom, prix: Number($('#of-prix').value) || 0, tauxCommission: Number($('#of-taux').value) || 0, modesPaiement, description: $('#of-desc').value.trim(), actif: $('#of-actif').checked };
+    const data = {
+      nom, prix: Number($('#of-prix').value) || 0,
+      commissionType,
+      tauxCommission: commissionType === 'percent' ? (Number($('#of-taux').value) || 0) : 0,
+      montantFixe: commissionType !== 'percent' ? (Number($('#of-montantfixe').value) || 0) : null,
+      primePif: commissionType === 'fixed_pif' ? (Number($('#of-primepif').value) || 0) : null,
+      modesPaiement, description: $('#of-desc').value.trim(), actif: $('#of-actif').checked
+    };
     if (existing) Object.assign(existing, data);
     else state.offres.push({ id: uid(), ecosystemeId: ecoId, ...data, createdAt: nowISO() });
     save(); ecoRerender(); toast(existing ? 'Offre mise à jour' : 'Offre créée');
