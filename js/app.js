@@ -380,11 +380,15 @@ function calcCommission(p) {
 function normalizePayment(pay) {
   pay = pay || {};
   const dateRecu = pay.dateRecu || null;
+  // Statut : 'reçu' (date de réception présente), 'annulé' (préservé), sinon 'en attente'
+  let statut = 'en attente';
+  if (dateRecu) statut = 'reçu';
+  else if (pay.statut === 'annulé') statut = 'annulé';
   return {
     montant: Number(pay.montant) || 0,
     datePrevu: pay.datePrevu || '',
     dateRecu: dateRecu,
-    statut: dateRecu ? 'reçu' : (pay.statut === 'reçu' ? 'en attente' : (pay.statut || 'en attente'))
+    statut: statut
   };
 }
 
@@ -522,14 +526,44 @@ function payCommission(p, pay) {
 }
 const contractedCash = (p) => Number(p.prix) || 0;
 const collectedCash = (p) => (p.paiements || []).filter(x => x.dateRecu).reduce((s, x) => s + (Number(x.montant) || 0), 0);
+// Somme des échéances annulées (client qui arrête de payer) — retirées du "reste à collecter"
+const cancelledCash = (p) => (p.paiements || []).filter(x => x.statut === 'annulé').reduce((s, x) => s + (Number(x.montant) || 0), 0);
 
 // Toutes les échéances à plat, enrichies du prospect (sur deals signés de la liste)
 function allPayments(list = state.prospects) {
   const out = [];
   signedProspects(list).forEach(p => (p.paiements || []).forEach((pay, idx) => {
-    out.push({ prospect: p, idx, montant: Number(pay.montant) || 0, datePrevu: pay.datePrevu, dateRecu: pay.dateRecu, commission: payCommission(p, pay) });
+    out.push({ prospect: p, idx, montant: Number(pay.montant) || 0, datePrevu: pay.datePrevu, dateRecu: pay.dateRecu, statut: pay.statut || (pay.dateRecu ? 'reçu' : 'en attente'), commission: payCommission(p, pay) });
   }));
   return out;
+}
+
+/* ---------- Génération automatique des échéances ---------- */
+const dISO = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+// Même jour, N mois plus tard, en bornant au dernier jour du mois cible (31 -> 30/28…)
+function addMonthsClamp(base, months) {
+  const t = new Date(base.getFullYear(), base.getMonth() + months, 1);
+  const daysInMonth = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+  t.setDate(Math.min(base.getDate(), daysInMonth));
+  return t;
+}
+// Nombre d'échéances d'un mode ("3 fois" -> 3, "1 fois" -> 1). Défaut 1.
+const modeCount = (mode) => Math.max(1, parseInt(mode, 10) || 1);
+// Construit les échéances : montant total / N, à partir de la date de close, un mois d'écart.
+// La 1ʳᵉ échéance est marquée "reçue" (commission générée au close), les suivantes "en attente".
+function planFromMode(prix, mode, closeISO) {
+  const n = modeCount(mode);
+  const base = new Date(closeISO);
+  if (isNaN(base)) return [];
+  const total = Number(prix) || 0;
+  const per = Math.floor(total / n);
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const d = addMonthsClamp(base, i);
+    const montant = i === n - 1 ? total - per * (n - 1) : per; // le dernier absorbe l'arrondi
+    rows.push({ montant, datePrevu: dISO(d), dateRecu: i === 0 ? dISO(base) : null, statut: i === 0 ? 'reçu' : 'en attente' });
+  }
+  return rows;
 }
 
 // Agrégats financiers (cash + commissions) sur une liste de prospects
@@ -539,7 +573,7 @@ function financials(list = state.prospects) {
   const cashCollecte = signed.reduce((s, p) => s + collectedCash(p), 0);
   const pays = allPayments(list);
   const commCollectee = pays.filter(x => x.dateRecu).reduce((s, x) => s + x.commission, 0);
-  const commEnAttente = pays.filter(x => !x.dateRecu).reduce((s, x) => s + x.commission, 0);
+  const commEnAttente = pays.filter(x => !x.dateRecu && x.statut !== 'annulé').reduce((s, x) => s + x.commission, 0);
   return {
     cashContracte, cashCollecte, cashACollecter: cashContracte - cashCollecte,
     commCollectee, commEnAttente
@@ -560,7 +594,7 @@ const isJourJ = (p, pay, idx) => idx === 0 && !!pay.dateRecu && !!p.dateClose &&
 // CA collecté jour J d'un prospect : montant du 1er versement s'il a été reçu le jour du close
 const dealJourJ = (p) => { const f = (p.paiements || [])[0]; return f && isJourJ(p, f, 0) ? Number(f.montant) || 0 : 0; };
 // Reste à collecter = deal total - tous les paiements déjà reçus
-const resteACollecter = (p) => Math.max(0, (Number(p.prix) || 0) - collectedCash(p));
+const resteACollecter = (p) => Math.max(0, (Number(p.prix) || 0) - collectedCash(p) - cancelledCash(p));
 
 // Distinction JOUR J (nouveau close) vs RÉCURRENT sur une fenêtre [start, end]
 // - jour J   : 1er paiement reçu le jour du close, ce close étant dans la période
@@ -1096,14 +1130,17 @@ function changeStatus(id, newStatus) {
 }
 
 /* ---- Éditeur de plan de paiement (réutilisé dans plusieurs modals) ---- */
+const PAY_STATUSES = ['en attente', 'reçu', 'annulé'];
 function planRowHTML(r) {
   r = r || {};
+  const st = r.statut || (r.dateRecu ? 'reçu' : 'en attente');
+  const opt = (v, l) => `<option value="${v}" ${v === st ? 'selected' : ''}>${l}</option>`;
   return `<div class="plan-row">
     <input class="input plan-m" type="number" placeholder="Montant €" value="${r.montant != null && r.montant !== '' ? r.montant : ''}">
     <input class="input plan-d" type="date" value="${r.datePrevu || ''}" title="Date prévue">
     <div class="plan-recu-cell">
-      <label class="plan-chk"><input type="checkbox" class="plan-r" ${r.dateRecu ? 'checked' : ''}> reçu</label>
-      <input class="input plan-rd" type="date" value="${r.dateRecu || ''}" style="${r.dateRecu ? '' : 'visibility:hidden'}" title="Date de réception">
+      <select class="select plan-st" title="Statut de la commission">${opt('en attente', 'En attente')}${opt('reçu', 'Reçu')}${opt('annulé', 'Annulé')}</select>
+      <input class="input plan-rd" type="date" value="${r.dateRecu || ''}" style="${st === 'reçu' ? '' : 'visibility:hidden'}" title="Date de réception">
     </div>
     <button type="button" class="btn btn-ghost btn-sm plan-x" title="Retirer">✕</button>
   </div>`;
@@ -1112,32 +1149,34 @@ function readPlan(container) {
   return $$('.plan-row', container).map(row => {
     const montant = Number($('.plan-m', row).value) || 0;
     const datePrevu = $('.plan-d', row).value;
-    const recu = $('.plan-r', row).checked;
+    const st = $('.plan-st', row).value;
     let dateRecu = $('.plan-rd', row).value;
-    if (recu && !dateRecu) dateRecu = todayISO();
-    return { montant, datePrevu, dateRecu: recu ? dateRecu : null, statut: recu ? 'reçu' : 'en attente' };
+    if (st === 'reçu' && !dateRecu) dateRecu = todayISO();
+    return { montant, datePrevu, dateRecu: st === 'reçu' ? dateRecu : null, statut: st };
   }).filter(r => r.montant > 0 || r.datePrevu);
 }
 function wirePlan(container, getTaux, totalEl) {
   const update = () => {
     const rows = readPlan(container);
     const total = rows.reduce((s, r) => s + r.montant, 0);
-    const recu = rows.filter(r => r.dateRecu).reduce((s, r) => s + r.montant, 0);
+    const recu = rows.filter(r => r.statut === 'reçu').reduce((s, r) => s + r.montant, 0);
     const comm = Math.round(total * getTaux() / 100);
     if (totalEl) totalEl.innerHTML = `Total plan : <strong>${eur(total)}</strong> · déjà reçu <strong>${eur(recu)}</strong> · commission totale <strong style="color:var(--green)">${eur(comm)}</strong>`;
   };
   container.addEventListener('click', (e) => {
     if (e.target.closest('.plan-x')) { e.target.closest('.plan-row').remove(); update(); }
   });
-  container.addEventListener('input', (e) => {
-    if (e.target.classList.contains('plan-r')) {
-      const row = e.target.closest('.plan-row');
-      const rd = $('.plan-rd', row);
-      if (e.target.checked) { rd.style.visibility = 'visible'; if (!rd.value) rd.value = todayISO(); }
-      else { rd.style.visibility = 'hidden'; }
-    }
+  // Changement de statut : n'affiche la date de réception que pour "Reçu"
+  const onStatut = (e) => {
+    if (!e.target.classList.contains('plan-st')) return;
+    const row = e.target.closest('.plan-row');
+    const rd = $('.plan-rd', row);
+    if (e.target.value === 'reçu') { rd.style.visibility = 'visible'; if (!rd.value) rd.value = todayISO(); }
+    else { rd.style.visibility = 'hidden'; }
     update();
-  });
+  };
+  container.addEventListener('change', onStatut);
+  container.addEventListener('input', update);
   container._update = update;
   update();
 }
@@ -1219,7 +1258,7 @@ function prospectForm(existing) {
     </div>
     <div class="ds-plan-title">Plan de paiement</div>
     <div class="table-scroll"><table class="clean-table" style="margin-bottom:18px"><thead><tr><th class="t-right">Montant</th><th>Prévue</th><th>Reçue</th><th>Statut</th></tr></thead><tbody>
-      ${(x.paiements || []).length ? x.paiements.map(pay => `<tr><td class="t-right t-num">${eur(pay.montant)}</td><td>${pay.datePrevu ? fmtDate(pay.datePrevu) : '—'}</td><td>${pay.dateRecu ? fmtDate(pay.dateRecu) : '—'}</td><td><span class="badge badge-${pay.dateRecu ? 'green' : 'gray'}">${pay.dateRecu ? 'reçu' : 'en attente'}</span></td></tr>`).join('') : '<tr><td colspan="4" class="muted" style="text-align:center;padding:12px">Aucune échéance</td></tr>'}
+      ${(x.paiements || []).length ? x.paiements.map(pay => { const st = pay.statut || (pay.dateRecu ? 'reçu' : 'en attente'); const bc = st === 'reçu' ? 'green' : st === 'annulé' ? 'red' : 'gray'; return `<tr><td class="t-right t-num">${eur(pay.montant)}</td><td>${pay.datePrevu ? fmtDate(pay.datePrevu) : '—'}</td><td>${pay.dateRecu ? fmtDate(pay.dateRecu) : '—'}</td><td><span class="badge badge-${bc}">${st}</span></td></tr>`; }).join('') : '<tr><td colspan="4" class="muted" style="text-align:center;padding:12px">Aucune échéance</td></tr>'}
     </tbody></table></div>` : '';
 
   openModal(`<h3>${existing ? 'Modifier le prospect' : 'Nouveau prospect'}</h3>
@@ -1241,7 +1280,7 @@ function prospectForm(existing) {
       <div class="field full"><label>Notes</label><textarea class="textarea" id="f-notes" rows="2">${esc(x.notes || '')}</textarea></div>
     </div>
     <div id="f-planwrap" style="display:none">
-      <div class="plan-head"><span class="card-title" style="font-size:13px">Plan de paiement</span><button type="button" class="btn btn-ghost btn-sm" id="f-addrow">${ICONS.plus} Échéance</button></div>
+      <div class="plan-head"><span class="card-title" style="font-size:13px">Plan de paiement</span><div class="flex" style="gap:6px"><button type="button" class="btn btn-ghost btn-sm" id="f-gen" title="Générer les échéances depuis le mode de paiement">${ICONS.trend || '↻'} Générer</button><button type="button" class="btn btn-ghost btn-sm" id="f-addrow">${ICONS.plus} Échéance</button></div></div>
       <div id="f-plan" class="plan-list"></div>
       <div class="hint mt" id="f-total"></div>
     </div>
@@ -1297,16 +1336,36 @@ function prospectForm(existing) {
   wirePlan(planCont, getTaux, $('#f-total'));
   $('#f-addrow').onclick = () => { planCont.insertAdjacentHTML('beforeend', planRowHTML({ datePrevu: '' })); planCont._update(); };
 
+  // Génère les échéances depuis le montant + le mode de paiement (montant / N, un mois d'écart)
+  const regenPlan = (silent) => {
+    const prix = Number($('#f-prix').value) || 0;
+    const mode = $('#f-mode').value;
+    const closeISO = $('#f-dateclose').value || todayISO();
+    if (!prix) { if (!silent) toast('Renseigne d\'abord le montant (via l\'offre)'); return; }
+    const rows = planFromMode(prix, mode, closeISO);
+    planCont.innerHTML = rows.map(planRowHTML).join('');
+    planCont._update();
+  };
+  $('#f-gen').onclick = () => regenPlan();
+  // Choisir un mode de paiement régénère automatiquement les échéances (si close + montant connu)
+  modeSel.addEventListener('change', () => { if ($('#f-statut').value === 'Closé' && Number($('#f-prix').value)) regenPlan(true); });
+
   const refreshConditionals = () => {
     const st = $('#f-statut').value;
     const signed = st === 'Closé'; // seul "Closé" porte des infos financières
     $('#f-closewrap').style.display = signed ? '' : 'none';
     $('#f-lostwrap').style.display = st === 'Perdu' ? '' : 'none';
     $('#f-planwrap').style.display = signed ? '' : 'none';
-    // Si on passe en signé sans aucune échéance, propose une ligne par défaut (prix issu de l'offre)
+    // Si on passe en signé sans aucune échéance : génère depuis le mode si dispo,
+    // sinon une ligne unique. La commission du close est marquée "reçue" par défaut.
     if (signed && !$$('.plan-row', planCont).length) {
-      const prix = Number($('#f-prix').value) || '';
-      planCont.insertAdjacentHTML('beforeend', planRowHTML({ montant: prix, datePrevu: $('#f-dateclose').value || todayISO(), dateRecu: null }));
+      const prix = Number($('#f-prix').value) || 0;
+      const closeISO = $('#f-dateclose').value || todayISO();
+      const mode = $('#f-mode') ? $('#f-mode').value : '';
+      const rows = (prix && modeCount(mode) > 1)
+        ? planFromMode(prix, mode, closeISO)
+        : [{ montant: prix || '', datePrevu: closeISO, dateRecu: closeISO, statut: 'reçu' }];
+      planCont.innerHTML = rows.map(planRowHTML).join('');
     }
     planCont._update();
   };
@@ -1916,7 +1975,7 @@ function renderCommissions() {
   const bRows = recPays.length ? recPays.map(x => `<tr><td class="t-strong">${esc(x.p.nom)}</td><td class="muted">${esc(x.p.offre || '—')}</td><td class="t-right t-num">${eur(x.pay.montant)}</td><td class="t-right t-num" style="color:${C_COMM}">${eur(payCommission(x.p, x.pay))}</td><td>${fmtDate(x.pay.dateRecu)}</td><td class="muted">${eur(x.p.prix)} · ${fmtDate(x.p.dateClose)}</td></tr>`).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">Aucun paiement récurrent ce mois</td></tr>';
 
   // Prochains encaissements
-  const upcoming = allPayments().filter(x => !x.dateRecu).sort((a, b) => new Date(a.datePrevu || '2999') - new Date(b.datePrevu || '2999'));
+  const upcoming = allPayments().filter(x => !x.dateRecu && x.statut !== 'annulé').sort((a, b) => new Date(a.datePrevu || '2999') - new Date(b.datePrevu || '2999'));
   const upRows = upcoming.length ? upcoming.map(x => `<div class="enc-item">
     <div class="enc-left"><div class="enc-date">${x.datePrevu ? fmtDate(x.datePrevu) : 'à planifier'}</div><div class="enc-name">${esc(x.prospect.nom)}</div></div>
     <div class="enc-right"><div class="t-num enc-amt">${eur(x.montant)}</div><div class="enc-comm" style="color:${C_COMM}">${eur(x.commission)}</div></div>

@@ -720,6 +720,7 @@ tfoot td { padding: 12px 16px; }
 .plan-row .input { padding: 7px 9px; font-size: 12.5px; }
 .plan-recu-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .plan-recu-cell .plan-rd { min-width: 0; }
+.plan-st { flex-shrink: 0; padding: 7px 8px; font-size: 12.5px; width: auto; }
 .plan-chk { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
 .plan-chk input { cursor: pointer; }
 .plan-x { padding: 6px 10px; color: var(--red); }
