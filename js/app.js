@@ -1947,16 +1947,53 @@ function progressCircle(pct, closed, honored, label, current) {
 const COMM_HIST = { preset: 'tout' };
 
 function renderCommissions() {
-  const fin = financials();
   const now = new Date();
   const mk = monthKey(todayISO());
   const moisStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const moisLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  const { nv, rec } = classifyPayments(state.prospects, moisStart, now);
-  const encaisseesMois = nv.comm + rec.comm;
-  const jourJComm = nv.comm; // "jour J" = 1er versement reçu le jour du close
 
   const inMonth = (iso) => { const d = new Date(iso); return d >= moisStart && d <= now; };
+
+  /* ---- 3 catégories ---- */
+  // 1. Contractées : total des commissions générées sur tous les closes (encaissées ou non)
+  const contractees = signedProspects().reduce((s, p) => s + (dealCommission(p) || 0), 0);
+  const encaisseesTotal = allPayments().filter(x => x.dateRecu).reduce((s, x) => s + x.commission, 0);
+
+  // 2. Encaissées ce mois : récurrent (closes de mois précédents) vs nouveaux closes (ce mois)
+  let encaisseesMois = 0, encRecurrent = 0, encNouveaux = 0;
+  signedProspects().forEach(p => {
+    const closeCeMois = p.dateClose && monthKey(p.dateClose) === mk;
+    (p.paiements || []).forEach(pay => {
+      if (!pay.dateRecu || !inMonth(pay.dateRecu)) return;
+      const c = payCommission(p, pay);
+      encaisseesMois += c;
+      if (closeCeMois) encNouveaux += c; else encRecurrent += c;
+    });
+  });
+
+  // 3. Reste à encaisser : échéances non reçues (hors annulées), regroupées par mois prévu
+  const previMap = {};
+  allPayments().filter(x => !x.dateRecu && x.statut !== 'annulé').forEach(x => {
+    const key = x.datePrevu ? monthKey(x.datePrevu) : 'planifier';
+    if (!previMap[key]) previMap[key] = { key, montant: 0, comm: 0, n: 0 };
+    previMap[key].montant += x.montant; previMap[key].comm += x.commission; previMap[key].n++;
+  });
+  const previList = Object.values(previMap).sort((a, b) => {
+    if (a.key === 'planifier') return 1; if (b.key === 'planifier') return -1;
+    return a.key < b.key ? -1 : 1;
+  });
+  const resteAEncaisser = previList.reduce((s, m) => s + m.comm, 0);
+  const moisLabelFromKey = (k) => k === 'planifier' ? 'À planifier'
+    : new Date(k + '-01T00:00:00').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const previRows = previList.length ? previList.map(m => {
+    const enRetard = m.key !== 'planifier' && m.key < mk;
+    return `<tr>
+      <td class="t-strong" style="text-transform:capitalize">${moisLabelFromKey(m.key)}${enRetard ? ' <span class="badge badge-red" style="font-size:10px">en retard</span>' : ''}</td>
+      <td class="t-right muted">${m.n}</td>
+      <td class="t-right t-num">${eur(m.montant)}</td>
+      <td class="t-right t-num" style="color:${C_COMM};font-weight:700">${eur(m.comm)}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="4" class="muted" style="text-align:center;padding:18px">Aucune échéance à venir 🎉</td></tr>';
 
   // Sous-section A : deals closés ce mois — colonnes "payé aujourd'hui" / "comm." = jour J uniquement
   const newDeals = signedProspects().filter(p => p.dateClose && monthKey(p.dateClose) === mk);
@@ -2000,11 +2037,34 @@ function renderCommissions() {
   $('#page-commissions').innerHTML = `
     <div class="page-head"><div><h1 class="page-title">Commissions</h1><div class="page-subtitle" style="text-transform:capitalize">${moisLabel}</div></div></div>
 
-    <div class="grid grid-4 sec">
-      ${kpiCard('Encaissées ce mois', eur(Math.round(encaisseesMois)), C_REV, 'Total reçu sur le mois')}
-      ${kpiCard('Dont jour J', eur(Math.round(jourJComm)), 'var(--text)', 'Encaissé au moment du close')}
-      ${kpiCard('Dont récurrents', eur(Math.round(rec.comm)), 'var(--text)', 'Paiements différés reçus ce mois')}
-      ${kpiCard('À venir', eur(Math.round(fin.commEnAttente)), C_COMM, 'Sur paiements planifiés')}
+    <div class="grid grid-3 sec">
+      <div class="card comm-cat">
+        <div class="kpic-label">Commissions contractées</div>
+        <div class="comm-cat-value" style="color:${C_RATE}">${eur(Math.round(contractees))}</div>
+        <div class="comm-cat-sub">Sur tous les closes · <b>${eur(Math.round(encaisseesTotal))}</b> déjà encaissées</div>
+      </div>
+      <div class="card comm-cat">
+        <div class="kpic-label">Encaissées ce mois-ci</div>
+        <div class="comm-cat-value" style="color:${C_REV}">${eur(Math.round(encaisseesMois))}</div>
+        <div class="comm-cat-breakdown">
+          <div><span>Dont récurrent</span><b>${eur(Math.round(encRecurrent))}</b></div>
+          <div><span>Dont nouveaux closes</span><b>${eur(Math.round(encNouveaux))}</b></div>
+        </div>
+      </div>
+      <div class="card comm-cat">
+        <div class="kpic-label">Reste à encaisser</div>
+        <div class="comm-cat-value" style="color:${C_COMM}">${eur(Math.round(resteAEncaisser))}</div>
+        <div class="comm-cat-sub">${previList.filter(m => m.key !== 'planifier').length} mois de prévisionnel · voir ci-dessous</div>
+      </div>
+    </div>
+
+    <div class="card sec">
+      <div class="kpic-label" style="margin-bottom:6px">Prévisionnel par mois — reste à encaisser</div>
+      <div class="hint" style="margin-bottom:12px">Basé sur les échéances planifiées non encore encaissées (hors annulées).</div>
+      <div class="table-scroll"><table class="clean-table"><thead><tr><th>Mois</th><th class="t-right">Échéances</th><th class="t-right">Montant à encaisser</th><th class="t-right">Commission attendue</th></tr></thead>
+        <tbody>${previRows}</tbody>
+        <tfoot><tr class="row-total"><td colspan="3" class="t-strong">Total à encaisser</td><td class="t-right t-num" style="color:${C_COMM}">${eur(Math.round(resteAEncaisser))}</td></tr></tfoot>
+      </table></div>
     </div>
 
     <div class="grid grid-55 sec">
