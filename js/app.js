@@ -6,19 +6,23 @@
 
 /* ---------- Constants ---------- */
 
-const STATUSES = ['Appel planifié', 'R2', 'Acompte', 'Closé', 'No show', 'Annulé', 'Perdu'];
+const STATUSES = ['Appel planifié', 'R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'No show', 'Annulé', 'Disqualifié', 'Perdu'];
 const STATUS_COLOR = {
-  'Appel planifié': 'blue', 'R2': 'violet', 'Acompte': 'orange', 'Closé': 'green',
-  'No show': 'gray', 'Annulé': 'gray', 'Perdu': 'red'
+  'Appel planifié': 'blue', 'R2': 'violet', 'Follow-up Court': 'orange', 'Follow-up Long': 'violet',
+  'Acompte': 'orange', 'Closé': 'green',
+  'No show': 'gray', 'Annulé': 'gray', 'Disqualifié': 'gray', 'Perdu': 'red'
 };
 const STATUS_VAR = { gray: 'text-3', blue: 'blue', orange: 'orange', green: 'green', red: 'red', violet: 'violet' };
 // Seul "Closé" génère du CA / commissions. "Acompte" = accepté de principe, pas encore payé (aucune valeur financière).
 const SIGNED_STATUSES = ['Closé'];
-// Statuts comptés dans le taux de closing "RDV honorés" (No show / Annulé exclus)
-const HONORED_STATUSES = ['Appel planifié', 'R2', 'Acompte', 'Closé', 'Perdu'];
-// Statuts finaux archivables (pas Appel planifié / R2 / Acompte encore en cours)
-const ARCHIVABLE_STATUSES = ['Closé', 'No show', 'Annulé', 'Perdu'];
-const LOST_REASONS = ['Objection principale', 'Pas de budget', 'Mauvais timing', 'Autre'];
+// Statuts comptés dans le taux de closing "RDV honorés" (No show / Annulé / Disqualifié exclus)
+const HONORED_STATUSES = ['Appel planifié', 'R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu'];
+// Statuts finaux archivables (pas les statuts encore en cours)
+const ARCHIVABLE_STATUSES = ['Closé', 'No show', 'Annulé', 'Disqualifié', 'Perdu'];
+// Taux de show-up : le call a eu lieu (réalisés) vs planifié mais non réalisé
+const SHOWED_UP_STATUSES = ['R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu'];
+const NO_SHOW_STATUSES = ['No show', 'Annulé'];
+const LOST_REASONS = ["J'ai besoin d'y réfléchir", 'Pas de budget', 'Mauvais timing', 'Autre'];
 const CRIT_LABELS = {
   intro_cadrage: 'Intro / Cadrage', decouverte: 'Découverte', creusage_douleur: 'Creusage douleur',
   traitement_pattern: 'Traitement pattern', reframing: 'Reframing', pitch: 'Pitch & validation',
@@ -920,7 +924,7 @@ let CRM_TAB = (() => { try { return sessionStorage.getItem('crm_tab') || 'pipeli
 const setCrmTab = (t) => { CRM_TAB = t; try { sessionStorage.setItem('crm_tab', t); } catch (e) { /* ignore */ } };
 const AGENDA_PERIOD = { preset: '7j', from: '', to: '' };
 const TOUS = { q: '', statut: 'Tous', eco: '', offre: '', period: { preset: 'tout', from: '', to: '' }, sort: { col: 'dateRdv', dir: -1 } };
-const PIPELINE_STATUSES = ['Appel planifié', 'R2', 'Acompte'];
+const PIPELINE_STATUSES = ['Appel planifié', 'R2', 'Follow-up Court', 'Follow-up Long', 'Acompte'];
 
 // Helpers RDV (date + heure)
 function dayKeyOf(iso) { const d = new Date(iso); if (isNaN(d)) return String(iso).slice(0, 10); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -980,7 +984,7 @@ function renderAgenda() {
 function renderPipelineTab() {
   $('#crm-tab').innerHTML = `
     <div class="count-line mb">Glisse une carte entre les colonnes pour changer de statut · clique pour ouvrir la fiche</div>
-    <div class="kanban kanban-3" id="kanban"></div>`;
+    <div class="kanban kanban-5" id="kanban"></div>`;
   renderKanban();
 }
 function renderKanban() {
@@ -1748,6 +1752,23 @@ function renderStats() {
   const totalColl = nv.collecte + rec.collecte;
   const dealMoyenNv = nv.nbCloses ? Math.round(nv.contracte / nv.nbCloses) : 0;
 
+  // Taux de show-up : appels réalisés / appels planifiés (réalisés + non réalisés)
+  const showedUp = base.filter(p => SHOWED_UP_STATUSES.includes(p.statut)).length;
+  const noShowMiss = base.filter(p => NO_SHOW_STATUSES.includes(p.statut)).length;
+  const showUpRate = (showedUp + noShowMiss) ? Math.round(showedUp / (showedUp + noShowMiss) * 100) : 0;
+  const disqualifies = base.filter(p => p.statut === 'Disqualifié').length;
+
+  // Raisons de non-close (prospects "Perdu") — répartition des objections
+  const perdus = base.filter(p => p.statut === 'Perdu');
+  const reasonMap = {};
+  perdus.forEach(p => { const r = (p.raisonPerte || '').trim() || 'Non renseignée'; reasonMap[r] = (reasonMap[r] || 0) + 1; });
+  const reasonList = Object.entries(reasonMap).map(([r, n]) => ({ r, n })).sort((a, b) => b.n - a.n);
+  const reasonMax = reasonList.length ? reasonList[0].n : 1;
+  const reasonBars = reasonList.length ? reasonList.map(x => {
+    const pct = perdus.length ? Math.round(x.n / perdus.length * 100) : 0;
+    return `<div class="lr-row"><div class="lr-label">${esc(x.r)}</div><div class="lr-track"><div class="lr-fill" style="width:${Math.round(x.n / reasonMax * 100)}%"></div></div><div class="lr-val">${x.n} · ${pct}%</div></div>`;
+  }).join('') : '<div class="muted" style="padding:16px 2px">Aucun prospect perdu sur la période 🎉</div>';
+
   // ---- Tableau (une ligne par offre) ----
   const offersToShow = state.offres.filter(o => (!f.eco || o.ecosystemeId === f.eco) && (!f.offre || o.id === f.offre));
   let rows = offersToShow.map(o => ({ offre: o, eco: (ecoById(o.ecosystemeId) || {}).nom || '—', agg: statAggregate(base.filter(p => p.offreId === o.id)) }));
@@ -1820,6 +1841,8 @@ function renderStats() {
           <div class="sb-item"><div class="sb-val">${eur(dealMoyenNv)}</div><div class="sb-lbl">Deal moyen</div></div>
           <div class="sb-item"><div class="sb-val">${rates.honored}%</div><div class="sb-lbl">Taux closing (honorés)</div></div>
           <div class="sb-item"><div class="sb-val">${rates.total}%</div><div class="sb-lbl">Taux closing (total)</div></div>
+          <div class="sb-item"><div class="sb-val">${showUpRate}%</div><div class="sb-lbl">Taux de show-up</div></div>
+          <div class="sb-item"><div class="sb-val">${disqualifies}</div><div class="sb-lbl">Disqualifiés</div></div>
         </div>
       </div>
       <div class="stat-block sb-collecte">
@@ -1836,6 +1859,11 @@ function renderStats() {
     <div class="card mb">
       <div class="card-head"><div class="card-title">Détail par offre</div><div class="card-sub">Clique une colonne pour trier</div></div>
       <div class="table-scroll"><table class="stat-table"><thead><tr>${thead}</tr></thead><tbody>${tableRows}</tbody></table></div>
+    </div>
+
+    <div class="card mb">
+      <div class="card-head"><div class="card-title">Raisons de non-close</div><div class="card-sub">Répartition des objections sur ${perdus.length} prospect(s) perdu(s) — repère tes patterns</div></div>
+      <div class="lr-list">${reasonBars}</div>
     </div>
 
     <div class="grid grid-2 mb">
@@ -1945,83 +1973,102 @@ function progressCircle(pct, closed, honored, label, current) {
    PAGE 6 — Commissions
    ========================================================================== */
 const COMM_HIST = { preset: 'tout' };
+// Vue de la page Commissions : mois affiché (YYYY-MM) + filtre écosystème
+const COMM_VIEW = { ym: monthKey(todayISO()), eco: '' };
+function shiftMonth(ym, delta) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+const monthLabel = (ym) => ym === 'planifier' ? 'À planifier'
+  : new Date(ym + '-01T00:00:00').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
 function renderCommissions() {
-  const now = new Date();
-  const mk = monthKey(todayISO());
-  const moisStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const moisLabel = now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const selYm = COMM_VIEW.ym;
+  const ecoF = COMM_VIEW.eco;
+  const matchEco = (p) => !ecoF || p.ecosystemeId === ecoF;
+  const ecoNom = (p) => p.ecosystemeNom || (ecoById(p.ecosystemeId) || {}).nom || '—';
+  const signed = signedProspects().filter(matchEco);
 
-  const inMonth = (iso) => { const d = new Date(iso); return d >= moisStart && d <= now; };
+  /* ---- Bloc 1 — Contracté ce mois ---- */
+  const closesSel = signed.filter(p => p.dateClose && monthKey(p.dateClose) === selYm);
+  const contracteMois = closesSel.reduce((s, p) => s + (dealCommission(p) || 0), 0);
 
-  /* ---- 3 catégories ---- */
-  // 1. Contractées : total des commissions générées sur tous les closes (encaissées ou non)
-  const contractees = signedProspects().reduce((s, p) => s + (dealCommission(p) || 0), 0);
-  const encaisseesTotal = allPayments().filter(x => x.dateRecu).reduce((s, x) => s + x.commission, 0);
-
-  // 2. Encaissées ce mois : récurrent (closes de mois précédents) vs nouveaux closes (ce mois)
-  let encaisseesMois = 0, encRecurrent = 0, encNouveaux = 0;
-  signedProspects().forEach(p => {
-    const closeCeMois = p.dateClose && monthKey(p.dateClose) === mk;
-    (p.paiements || []).forEach(pay => {
-      if (!pay.dateRecu || !inMonth(pay.dateRecu)) return;
-      const c = payCommission(p, pay);
-      encaisseesMois += c;
-      if (closeCeMois) encNouveaux += c; else encRecurrent += c;
-    });
+  /* ---- Bloc 2 — Encaissé ce mois (détail par prospect) ---- */
+  const encRows = [];
+  let encTotal = 0, encRecurrent = 0, encNouveaux = 0;
+  signed.forEach(p => {
+    let comm = 0;
+    (p.paiements || []).forEach(pay => { if (pay.dateRecu && monthKey(pay.dateRecu) === selYm) comm += payCommission(p, pay); });
+    if (comm <= 0) return;
+    const recurrent = !(p.dateClose && monthKey(p.dateClose) === selYm); // échéance d'un close antérieur
+    encTotal += comm;
+    if (recurrent) encRecurrent += comm; else encNouveaux += comm;
+    encRows.push({ nom: p.nom, eco: ecoNom(p), comm, recurrent });
   });
+  encRows.sort((a, b) => b.comm - a.comm);
+  const encTable = encRows.length ? encRows.map(r => `<tr>
+    <td class="t-strong">${esc(r.nom)}</td>
+    <td class="muted">${esc(r.eco)}</td>
+    <td class="t-right t-num" style="color:${C_REV}">${eur(r.comm)}</td>
+    <td>${r.recurrent ? '<span class="badge badge-blue">Récurrent</span>' : '<span class="badge badge-green">Nouveau close</span>'}</td>
+  </tr>`).join('') : '<tr><td colspan="4" class="muted" style="text-align:center;padding:18px">Aucun encaissement ce mois-ci</td></tr>';
 
-  // 3. Reste à encaisser : échéances non reçues (hors annulées), regroupées par mois prévu
+  /* ---- Bloc 3 — Prévisionnel des prochains encaissements (mois par mois, simplifié) ---- */
   const previMap = {};
-  allPayments().filter(x => !x.dateRecu && x.statut !== 'annulé').forEach(x => {
+  allPayments().filter(x => !x.dateRecu && x.statut !== 'annulé' && matchEco(x.prospect)).forEach(x => {
     const key = x.datePrevu ? monthKey(x.datePrevu) : 'planifier';
-    if (!previMap[key]) previMap[key] = { key, montant: 0, comm: 0, n: 0 };
-    previMap[key].montant += x.montant; previMap[key].comm += x.commission; previMap[key].n++;
+    if (!previMap[key]) previMap[key] = { key, comm: 0 };
+    previMap[key].comm += x.commission;
   });
   const previList = Object.values(previMap).sort((a, b) => {
     if (a.key === 'planifier') return 1; if (b.key === 'planifier') return -1;
     return a.key < b.key ? -1 : 1;
   });
   const resteAEncaisser = previList.reduce((s, m) => s + m.comm, 0);
-  const moisLabelFromKey = (k) => k === 'planifier' ? 'À planifier'
-    : new Date(k + '-01T00:00:00').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  const previRows = previList.length ? previList.map(m => {
-    const enRetard = m.key !== 'planifier' && m.key < mk;
-    return `<tr>
-      <td class="t-strong" style="text-transform:capitalize">${moisLabelFromKey(m.key)}${enRetard ? ' <span class="badge badge-red" style="font-size:10px">en retard</span>' : ''}</td>
-      <td class="t-right muted">${m.n}</td>
-      <td class="t-right t-num">${eur(m.montant)}</td>
-      <td class="t-right t-num" style="color:${C_COMM};font-weight:700">${eur(m.comm)}</td>
-    </tr>`;
-  }).join('') : '<tr><td colspan="4" class="muted" style="text-align:center;padding:18px">Aucune échéance à venir 🎉</td></tr>';
+  const previRows = previList.length ? previList.map(m => `<tr>
+    <td class="t-strong" style="text-transform:capitalize">${monthLabel(m.key)}${m.key !== 'planifier' && m.key < monthKey(todayISO()) ? ' <span class="badge badge-red" style="font-size:10px">en retard</span>' : ''}</td>
+    <td class="t-right t-num" style="color:${C_COMM};font-weight:700">${eur(Math.round(m.comm))}</td>
+  </tr>`).join('') : '<tr><td colspan="2" class="muted" style="text-align:center;padding:18px">Aucun encaissement à venir 🎉</td></tr>';
 
-  // Sous-section A : deals closés ce mois — colonnes "payé aujourd'hui" / "comm." = jour J uniquement
-  const newDeals = signedProspects().filter(p => p.dateClose && monthKey(p.dateClose) === mk);
-  const aRows = newDeals.length ? newDeals.map(p => {
-    const first = (p.paiements || [])[0];
-    const jj = first && isJourJ(p, first, 0);
-    const payeJour = jj ? (Number(first.montant) || 0) : 0;
-    const commEnc = jj ? payCommission(p, first) : 0;
-    return `<tr><td class="t-strong">${esc(p.nom)}</td><td class="muted">${esc(p.offre || '—')}</td><td class="t-right t-num">${eur(p.prix)}</td><td class="t-right t-num">${eur(payeJour)}</td><td class="t-right t-num" style="color:${C_COMM}">${eur(commEnc)}</td><td>${fmtDate(p.dateClose)}</td></tr>`;
-  }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">Aucun nouveau close ce mois</td></tr>';
+  /* ---- Répartition par écosystème (Mod 6, quand aucun filtre) ---- */
+  let ecoBreakdown = '';
+  if (!ecoF) {
+    const rows = state.ecosystemes.map(e => {
+      const ps = signedProspects().filter(p => p.ecosystemeId === e.id);
+      const contr = ps.filter(p => p.dateClose && monthKey(p.dateClose) === selYm).reduce((s, p) => s + (dealCommission(p) || 0), 0);
+      let enc = 0, reste = 0;
+      ps.forEach(p => (p.paiements || []).forEach(pay => {
+        if (pay.dateRecu && monthKey(pay.dateRecu) === selYm) enc += payCommission(p, pay);
+        else if (!pay.dateRecu && pay.statut !== 'annulé') reste += payCommission(p, pay);
+      }));
+      return { nom: e.nom, id: e.id, contr, enc, reste };
+    }).filter(x => x.contr > 0 || x.enc > 0 || x.reste > 0);
+    if (rows.length) {
+      const body = rows.map(r => `<tr>
+        <td class="t-strong"><a href="#" class="link-accent" data-eco-pick="${r.id}">${esc(r.nom)}</a></td>
+        <td class="t-right t-num" style="color:${C_RATE}">${eur(Math.round(r.contr))}</td>
+        <td class="t-right t-num" style="color:${C_REV}">${eur(Math.round(r.enc))}</td>
+        <td class="t-right t-num" style="color:${C_COMM}">${eur(Math.round(r.reste))}</td>
+      </tr>`).join('');
+      ecoBreakdown = `<div class="card sec">
+        <div class="kpic-label" style="margin-bottom:12px">Par écosystème — ${monthLabel(selYm)}</div>
+        <div class="table-scroll"><table class="clean-table"><thead><tr><th>Écosystème</th><th class="t-right">Contracté</th><th class="t-right">Encaissé</th><th class="t-right">Reste à encaisser</th></tr></thead><tbody>${body}</tbody></table></div>
+      </div>`;
+    }
+  }
 
-  // Sous-section B : tous les paiements reçus ce mois QUI NE SONT PAS jour J (échéances différées + deals antérieurs)
-  const recPays = [];
-  signedProspects().forEach(p => (p.paiements || []).forEach((pay, idx) => { if (pay.dateRecu && inMonth(pay.dateRecu) && !isJourJ(p, pay, idx)) recPays.push({ p, pay }); }));
-  recPays.sort((a, b) => new Date(b.pay.dateRecu) - new Date(a.pay.dateRecu));
-  const bRows = recPays.length ? recPays.map(x => `<tr><td class="t-strong">${esc(x.p.nom)}</td><td class="muted">${esc(x.p.offre || '—')}</td><td class="t-right t-num">${eur(x.pay.montant)}</td><td class="t-right t-num" style="color:${C_COMM}">${eur(payCommission(x.p, x.pay))}</td><td>${fmtDate(x.pay.dateRecu)}</td><td class="muted">${eur(x.p.prix)} · ${fmtDate(x.p.dateClose)}</td></tr>`).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">Aucun paiement récurrent ce mois</td></tr>';
-
-  // Prochains encaissements
-  const upcoming = allPayments().filter(x => !x.dateRecu && x.statut !== 'annulé').sort((a, b) => new Date(a.datePrevu || '2999') - new Date(b.datePrevu || '2999'));
+  /* ---- Prochains encaissements (actionnable : marquer reçu), respecte le filtre éco ---- */
+  const upcoming = allPayments().filter(x => !x.dateRecu && x.statut !== 'annulé' && matchEco(x.prospect)).sort((a, b) => new Date(a.datePrevu || '2999') - new Date(b.datePrevu || '2999'));
   const upRows = upcoming.length ? upcoming.map(x => `<div class="enc-item">
     <div class="enc-left"><div class="enc-date">${x.datePrevu ? fmtDate(x.datePrevu) : 'à planifier'}</div><div class="enc-name">${esc(x.prospect.nom)}</div></div>
     <div class="enc-right"><div class="t-num enc-amt">${eur(x.montant)}</div><div class="enc-comm" style="color:${C_COMM}">${eur(x.commission)}</div></div>
     <button class="btn btn-ghost btn-sm enc-mark" data-id="${x.prospect.id}" data-idx="${x.idx}">Marquer reçu</button>
   </div>`).join('') : '<div class="muted" style="padding:16px 0">Aucun encaissement à venir 🎉</div>';
 
-  // Historique complet (paiements reçus)
+  /* ---- Historique (paiements reçus), respecte le filtre éco ---- */
   const received = [];
-  signedProspects().forEach(p => (p.paiements || []).forEach((pay, idx) => { if (pay.dateRecu) received.push({ p, pay, comm: payCommission(p, pay), jourJ: isJourJ(p, pay, idx) }); }));
+  signed.forEach(p => (p.paiements || []).forEach((pay, idx) => { if (pay.dateRecu) received.push({ p, pay, comm: payCommission(p, pay), jourJ: isJourJ(p, pay, idx) }); }));
   received.sort((a, b) => new Date(b.pay.dateRecu) - new Date(a.pay.dateRecu));
   const { start: hs, end: he } = rangeForPreset(COMM_HIST.preset, '', '', 'past');
   const hist = received.filter(r => COMM_HIST.preset === 'tout' || (new Date(r.pay.dateRecu) >= hs && new Date(r.pay.dateRecu) <= he));
@@ -2031,21 +2078,32 @@ function renderCommissions() {
     <td class="t-right t-num">${eur(r.pay.montant)}</td><td class="t-right t-num" style="color:${C_COMM}">${eur(r.comm)}</td>
   </tr>`).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:24px">Aucune commission encaissée sur cette période</td></tr>';
   const histTotal = hist.reduce((s, r) => s + r.comm, 0);
-
   const hp = [['mois', 'Ce mois'], ['3mois', '3 mois'], ['6mois', '6 mois'], ['tout', 'Tout']];
 
+  const ecoOpts = `<option value="">Tous les écosystèmes</option>` +
+    state.ecosystemes.map(e => `<option value="${e.id}" ${e.id === ecoF ? 'selected' : ''}>${esc(e.nom)}</option>`).join('');
+
   $('#page-commissions').innerHTML = `
-    <div class="page-head"><div><h1 class="page-title">Commissions</h1><div class="page-subtitle" style="text-transform:capitalize">${moisLabel}</div></div></div>
+    <div class="page-head"><div><h1 class="page-title">Commissions</h1><div class="page-subtitle">Suivi mois par mois de tes commissions</div></div></div>
+
+    <div class="card sec comm-nav">
+      <div class="month-nav">
+        <button class="btn btn-ghost btn-sm" id="cm-prev">◀</button>
+        <span class="month-nav-label" style="text-transform:capitalize">${monthLabel(selYm)}</span>
+        <button class="btn btn-ghost btn-sm" id="cm-next">▶</button>
+      </div>
+      <select class="select" id="cm-eco" style="max-width:260px">${ecoOpts}</select>
+    </div>
 
     <div class="grid grid-3 sec">
       <div class="card comm-cat">
-        <div class="kpic-label">Commissions contractées</div>
-        <div class="comm-cat-value" style="color:${C_RATE}">${eur(Math.round(contractees))}</div>
-        <div class="comm-cat-sub">Sur tous les closes · <b>${eur(Math.round(encaisseesTotal))}</b> déjà encaissées</div>
+        <div class="kpic-label">Contracté ce mois</div>
+        <div class="comm-cat-value" style="color:${C_RATE}">${eur(Math.round(contracteMois))}</div>
+        <div class="comm-cat-sub">${closesSel.length} close(s) ce mois-ci</div>
       </div>
       <div class="card comm-cat">
-        <div class="kpic-label">Encaissées ce mois-ci</div>
-        <div class="comm-cat-value" style="color:${C_REV}">${eur(Math.round(encaisseesMois))}</div>
+        <div class="kpic-label">Encaissé ce mois</div>
+        <div class="comm-cat-value" style="color:${C_REV}">${eur(Math.round(encTotal))}</div>
         <div class="comm-cat-breakdown">
           <div><span>Dont récurrent</span><b>${eur(Math.round(encRecurrent))}</b></div>
           <div><span>Dont nouveaux closes</span><b>${eur(Math.round(encNouveaux))}</b></div>
@@ -2054,32 +2112,33 @@ function renderCommissions() {
       <div class="card comm-cat">
         <div class="kpic-label">Reste à encaisser</div>
         <div class="comm-cat-value" style="color:${C_COMM}">${eur(Math.round(resteAEncaisser))}</div>
-        <div class="comm-cat-sub">${previList.filter(m => m.key !== 'planifier').length} mois de prévisionnel · voir ci-dessous</div>
+        <div class="comm-cat-sub">Total des échéances à venir</div>
       </div>
-    </div>
-
-    <div class="card sec">
-      <div class="kpic-label" style="margin-bottom:6px">Prévisionnel par mois — reste à encaisser</div>
-      <div class="hint" style="margin-bottom:12px">Basé sur les échéances planifiées non encore encaissées (hors annulées).</div>
-      <div class="table-scroll"><table class="clean-table"><thead><tr><th>Mois</th><th class="t-right">Échéances</th><th class="t-right">Montant à encaisser</th><th class="t-right">Commission attendue</th></tr></thead>
-        <tbody>${previRows}</tbody>
-        <tfoot><tr class="row-total"><td colspan="3" class="t-strong">Total à encaisser</td><td class="t-right t-num" style="color:${C_COMM}">${eur(Math.round(resteAEncaisser))}</td></tr></tfoot>
-      </table></div>
     </div>
 
     <div class="grid grid-55 sec">
       <div class="card">
-        <div class="kpic-label">Commissions ce mois</div>
-        <div class="sub-label">Nouveaux closes</div>
-        <div class="table-scroll"><table class="clean-table"><thead><tr><th>Nom</th><th>Offre</th><th class="t-right">Deal total</th><th class="t-right">Payé aujourd'hui</th><th class="t-right">Comm. encaissée</th><th>Date</th></tr></thead><tbody>${aRows}</tbody></table></div>
-        <div class="sub-label" style="margin-top:22px">Paiements récurrents reçus</div>
-        <div class="table-scroll"><table class="clean-table"><thead><tr><th>Nom</th><th>Offre</th><th class="t-right">Montant reçu</th><th class="t-right">Commission</th><th>Date reçu</th><th>Deal original</th></tr></thead><tbody>${bRows}</tbody></table></div>
-        <div class="cons-line"><span>Commission totale encaissée ce mois</span><span class="t-num" style="color:${C_REV};font-weight:700">${eur(Math.round(encaisseesMois))}</span></div>
+        <div class="kpic-label" style="margin-bottom:12px">Encaissé ce mois — détail par prospect</div>
+        <div class="table-scroll"><table class="clean-table"><thead><tr><th>Prospect</th><th>Écosystème</th><th class="t-right">Montant encaissé</th><th>Type</th></tr></thead>
+          <tbody>${encTable}</tbody>
+          <tfoot><tr class="row-total"><td colspan="2" class="t-strong">Total encaissé</td><td class="t-right t-num" style="color:${C_REV}">${eur(Math.round(encTotal))}</td><td></td></tr></tfoot>
+        </table></div>
       </div>
       <div class="card">
-        <div class="kpic-label">Prochains encaissements</div>
-        <div style="margin-top:8px">${upRows}</div>
+        <div class="kpic-label" style="margin-bottom:6px">Prévisionnel des prochains encaissements</div>
+        <div class="hint" style="margin-bottom:10px">Total attendu, mois par mois.</div>
+        <div class="table-scroll"><table class="clean-table"><thead><tr><th>Mois</th><th class="t-right">Commission attendue</th></tr></thead>
+          <tbody>${previRows}</tbody>
+          <tfoot><tr class="row-total"><td class="t-strong">Total</td><td class="t-right t-num" style="color:${C_COMM}">${eur(Math.round(resteAEncaisser))}</td></tr></tfoot>
+        </table></div>
       </div>
+    </div>
+
+    ${ecoBreakdown}
+
+    <div class="card sec">
+      <div class="kpic-label" style="margin-bottom:8px">Prochains encaissements à pointer</div>
+      <div>${upRows}</div>
     </div>
 
     <div class="card">
@@ -2096,6 +2155,10 @@ function renderCommissions() {
       </table></div>
     </div>`;
 
+  $('#cm-prev').onclick = () => { COMM_VIEW.ym = shiftMonth(COMM_VIEW.ym, -1); renderCommissions(); };
+  $('#cm-next').onclick = () => { COMM_VIEW.ym = shiftMonth(COMM_VIEW.ym, 1); renderCommissions(); };
+  $('#cm-eco').onchange = () => { COMM_VIEW.eco = $('#cm-eco').value; renderCommissions(); };
+  $$('#page-commissions [data-eco-pick]').forEach(a => a.onclick = (e) => { e.preventDefault(); COMM_VIEW.eco = a.dataset.ecoPick; renderCommissions(); });
   $('#cm-export').onclick = exportCommissionsCSV;
   $$('#page-commissions .enc-mark').forEach(b => b.onclick = () => markPaymentReceived(b.dataset.id, Number(b.dataset.idx)));
   $$('#page-commissions [data-hp]').forEach(b => b.onclick = () => { COMM_HIST.preset = b.dataset.hp; renderCommissions(); });
