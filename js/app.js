@@ -19,9 +19,10 @@ const SIGNED_STATUSES = ['Closé'];
 const HONORED_STATUSES = ['Appel planifié', 'R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu'];
 // Statuts finaux archivables (pas les statuts encore en cours)
 const ARCHIVABLE_STATUSES = ['Closé', 'No show', 'Annulé', 'Disqualifié', 'Perdu'];
-// Taux de show-up : le call a eu lieu (réalisés) vs planifié mais non réalisé
-const SHOWED_UP_STATUSES = ['R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu'];
-const NO_SHOW_STATUSES = ['No show', 'Annulé'];
+// Taux de show-up : le prospect s'est présenté (Disqualifié inclus — il était là) vs vrai no-show.
+// "Annulé" n'est pas un no-show (RDV décommandé), il est donc exclu du calcul.
+const SHOWED_UP_STATUSES = ['R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu', 'Disqualifié'];
+const NO_SHOW_STATUSES = ['No show'];
 const LOST_REASONS = ["J'ai besoin d'y réfléchir", 'Pas de budget', 'Mauvais timing', 'Autre'];
 const CRIT_LABELS = {
   intro_cadrage: 'Intro / Cadrage', decouverte: 'Découverte', creusage_douleur: 'Creusage douleur',
@@ -1757,6 +1758,21 @@ function renderStats() {
   const noShowMiss = base.filter(p => NO_SHOW_STATUSES.includes(p.statut)).length;
   const showUpRate = (showedUp + noShowMiss) ? Math.round(showedUp / (showedUp + noShowMiss) * 100) : 0;
   const disqualifies = base.filter(p => p.statut === 'Disqualifié').length;
+  const acomptesEnCours = base.filter(p => p.statut === 'Acompte').length;
+
+  // Répartition de tous les statuts sur 100 % des appels planifiés (période filtrée)
+  const CALL_DIST_DEF = [
+    { label: 'Closé', st: ['Closé'], color: '#16a34a' },
+    { label: 'R2', st: ['R2'], color: '#8b5cf6' },
+    { label: 'Follow-up Court', st: ['Follow-up Court'], color: '#E8932F' },
+    { label: 'Follow-up Long', st: ['Follow-up Long'], color: '#3B82C4' },
+    { label: 'Disqualifié', st: ['Disqualifié'], color: '#9ca3af' },
+    { label: 'No-show', st: ['No show'], color: '#DB5050' },
+    { label: 'Annulé', st: ['Annulé'], color: '#c9b8a8' },
+    { label: 'Non closé', st: ['Appel planifié', 'Acompte', 'Perdu'], color: '#64748b' }
+  ];
+  const callDist = CALL_DIST_DEF.map(c => ({ label: c.label, color: c.color, n: base.filter(p => c.st.includes(p.statut)).length })).filter(c => c.n > 0);
+  const callTotal = callDist.reduce((s, c) => s + c.n, 0);
 
   // Raisons de non-close (prospects "Perdu") — répartition des objections
   const perdus = base.filter(p => p.statut === 'Perdu');
@@ -1843,6 +1859,7 @@ function renderStats() {
           <div class="sb-item"><div class="sb-val">${rates.total}%</div><div class="sb-lbl">Taux closing (total)</div></div>
           <div class="sb-item"><div class="sb-val">${showUpRate}%</div><div class="sb-lbl">Taux de show-up</div></div>
           <div class="sb-item"><div class="sb-val">${disqualifies}</div><div class="sb-lbl">Disqualifiés</div></div>
+          <div class="sb-item"><div class="sb-val">${acomptesEnCours}</div><div class="sb-lbl">Acomptes en cours</div></div>
         </div>
       </div>
       <div class="stat-block sb-collecte">
@@ -1861,9 +1878,15 @@ function renderStats() {
       <div class="table-scroll"><table class="stat-table"><thead><tr>${thead}</tr></thead><tbody>${tableRows}</tbody></table></div>
     </div>
 
-    <div class="card mb">
-      <div class="card-head"><div class="card-title">Raisons de non-close</div><div class="card-sub">Répartition des objections sur ${perdus.length} prospect(s) perdu(s) — repère tes patterns</div></div>
-      <div class="lr-list">${reasonBars}</div>
+    <div class="grid grid-2 mb">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Répartition des appels</div><div class="card-sub">${callTotal} appel(s) planifié(s) · tous statuts</div></div>
+        <div class="chart-box" style="height:280px">${window.Chart ? '<canvas id="st-c-calls"></canvas>' : '<div class="muted" style="padding:30px;text-align:center">Graphique indisponible</div>'}</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Raisons de non-close</div><div class="card-sub">Objections sur ${perdus.length} prospect(s) perdu(s)</div></div>
+        <div class="lr-list">${reasonBars}</div>
+      </div>
     </div>
 
     <div class="grid grid-2 mb">
@@ -1886,13 +1909,30 @@ function renderStats() {
     renderStats();
   });
 
-  buildStatsCharts(pool);
+  buildStatsCharts(pool, callDist);
 }
 
 // 3 graphiques : CA contracté (barres), CA collecté empilé, taux de closing (courbe + moyenne)
-function buildStatsCharts(pool) {
+function buildStatsCharts(pool, callDist) {
   destroyStatsCharts();
   if (!window.Chart) return;
+
+  // Diagramme circulaire — répartition de tous les statuts sur les appels planifiés
+  const cCalls = $('#st-c-calls');
+  if (cCalls && callDist && callDist.length) {
+    const totalCalls = callDist.reduce((s, c) => s + c.n, 0);
+    STATS_CHARTS.push(new Chart(cCalls, {
+      type: 'doughnut',
+      data: { labels: callDist.map(c => c.label), datasets: [{ data: callDist.map(c => c.n), backgroundColor: callDist.map(c => c.color), borderWidth: 2, borderColor: '#fff' }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false, cutout: '58%',
+        plugins: {
+          legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, padding: 10 } },
+          tooltip: { callbacks: { label: (c) => ` ${c.label} : ${c.parsed} (${totalCalls ? Math.round(c.parsed / totalCalls * 100) : 0}%)` } }
+        }
+      }
+    }));
+  }
   const months = last12Months();
   const labels = months.map(m => m.label);
   const eurTick = (v) => (v >= 1000 ? (v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : v) + '€';
