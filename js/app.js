@@ -15,14 +15,13 @@ const STATUS_COLOR = {
 const STATUS_VAR = { gray: 'text-3', blue: 'blue', orange: 'orange', green: 'green', red: 'red', violet: 'violet' };
 // Seul "Closé" génère du CA / commissions. "Acompte" = accepté de principe, pas encore payé (aucune valeur financière).
 const SIGNED_STATUSES = ['Closé'];
-// Statuts comptés dans le taux de closing "RDV honorés" (No show / Annulé / Disqualifié exclus)
-const HONORED_STATUSES = ['Appel planifié', 'R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu'];
+// RDVs honorés = le prospect s'est présenté à l'appel (Disqualifié inclus ; No show / Annulé exclus ;
+// "Appel planifié" exclu car le RDV n'a pas encore eu lieu).
+const HONORED_STATUSES = ['R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu', 'Disqualifié'];
 // Statuts finaux archivables (pas les statuts encore en cours)
 const ARCHIVABLE_STATUSES = ['Closé', 'No show', 'Annulé', 'Disqualifié', 'Perdu'];
-// Taux de show-up : le prospect s'est présenté (Disqualifié inclus — il était là) vs vrai no-show.
-// "Annulé" n'est pas un no-show (RDV décommandé), il est donc exclu du calcul.
-const SHOWED_UP_STATUSES = ['R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu', 'Disqualifié'];
-const NO_SHOW_STATUSES = ['No show'];
+// No-show pour le calcul du show-up : No show + Annulé (RDV planifié mais non honoré).
+const NO_SHOW_STATUSES = ['No show', 'Annulé'];
 const LOST_REASONS = ["J'ai besoin d'y réfléchir", 'Pas de budget', 'Mauvais timing', 'Autre'];
 const CRIT_LABELS = {
   intro_cadrage: 'Intro / Cadrage', decouverte: 'Découverte', creusage_douleur: 'Creusage douleur',
@@ -629,12 +628,17 @@ function closingRates(list = state.prospects) {
   const all = list.length;
   const closed = list.filter(p => p.statut === 'Closé').length;
   const honoredDenom = list.filter(p => HONORED_STATUSES.includes(p.statut)).length;
+  const disq = list.filter(p => p.statut === 'Disqualifié').length;
+  const qualifiedDenom = honoredDenom - disq; // RDV honorés hors disqualifiés
   return {
     closed,
+    honoredDenom, qualifiedDenom, totalDenom: all, disq,
+    // closes ÷ (RDV honorés - disqualifiés)
+    qualified: qualifiedDenom ? Math.round((closed / qualifiedDenom) * 100) : 0,
+    // closes ÷ RDV honorés
     honored: honoredDenom ? Math.round((closed / honoredDenom) * 100) : 0,
-    honoredDenom,
-    total: all ? Math.round((closed / all) * 100) : 0,
-    totalDenom: all
+    // closes ÷ total RDV planifiés (no-shows et annulés inclus)
+    total: all ? Math.round((closed / all) * 100) : 0
   };
 }
 
@@ -1753,8 +1757,8 @@ function renderStats() {
   const totalColl = nv.collecte + rec.collecte;
   const dealMoyenNv = nv.nbCloses ? Math.round(nv.contracte / nv.nbCloses) : 0;
 
-  // Taux de show-up : appels réalisés / appels planifiés (réalisés + non réalisés)
-  const showedUp = base.filter(p => SHOWED_UP_STATUSES.includes(p.statut)).length;
+  // Taux de show-up = RDV honorés ÷ (RDV honorés + no-shows + annulés)
+  const showedUp = base.filter(p => HONORED_STATUSES.includes(p.statut)).length;
   const noShowMiss = base.filter(p => NO_SHOW_STATUSES.includes(p.statut)).length;
   const showUpRate = (showedUp + noShowMiss) ? Math.round(showedUp / (showedUp + noShowMiss) * 100) : 0;
   const disqualifies = base.filter(p => p.statut === 'Disqualifié').length;
@@ -1763,13 +1767,14 @@ function renderStats() {
   // Répartition de tous les statuts sur 100 % des appels planifiés (période filtrée)
   const CALL_DIST_DEF = [
     { label: 'Closé', st: ['Closé'], color: '#16a34a' },
+    { label: 'Acompte', st: ['Acompte'], color: '#14b8a6' },
     { label: 'R2', st: ['R2'], color: '#8b5cf6' },
     { label: 'Follow-up Court', st: ['Follow-up Court'], color: '#E8932F' },
     { label: 'Follow-up Long', st: ['Follow-up Long'], color: '#3B82C4' },
     { label: 'Disqualifié', st: ['Disqualifié'], color: '#9ca3af' },
     { label: 'No-show', st: ['No show'], color: '#DB5050' },
     { label: 'Annulé', st: ['Annulé'], color: '#c9b8a8' },
-    { label: 'Non closé', st: ['Appel planifié', 'Acompte', 'Perdu'], color: '#64748b' }
+    { label: 'Non closé', st: ['Appel planifié', 'Perdu'], color: '#64748b' }
   ];
   const callDist = CALL_DIST_DEF.map(c => ({ label: c.label, color: c.color, n: base.filter(p => c.st.includes(p.statut)).length })).filter(c => c.n > 0);
   const callTotal = callDist.reduce((s, c) => s + c.n, 0);
@@ -1855,8 +1860,9 @@ function renderStats() {
           <div class="sb-item lead"><div class="sb-val">${eur(nv.contracte)}</div><div class="sb-lbl">CA contracté</div></div>
           <div class="sb-item"><div class="sb-val">${nv.nbCloses}</div><div class="sb-lbl">Closes</div></div>
           <div class="sb-item"><div class="sb-val">${eur(dealMoyenNv)}</div><div class="sb-lbl">Deal moyen</div></div>
-          <div class="sb-item"><div class="sb-val">${rates.honored}%</div><div class="sb-lbl">Taux closing (honorés)</div></div>
-          <div class="sb-item"><div class="sb-val">${rates.total}%</div><div class="sb-lbl">Taux closing (total)</div></div>
+          <div class="sb-item"><div class="sb-val">${rates.qualified}%</div><div class="sb-lbl">Closing (RDV qualifié)</div></div>
+          <div class="sb-item"><div class="sb-val">${rates.honored}%</div><div class="sb-lbl">Closing (RDV honoré)</div></div>
+          <div class="sb-item"><div class="sb-val">${rates.total}%</div><div class="sb-lbl">Closing (global)</div></div>
           <div class="sb-item"><div class="sb-val">${showUpRate}%</div><div class="sb-lbl">Taux de show-up</div></div>
           <div class="sb-item"><div class="sb-val">${disqualifies}</div><div class="sb-lbl">Disqualifiés</div></div>
           <div class="sb-item"><div class="sb-val">${acomptesEnCours}</div><div class="sb-lbl">Acomptes en cours</div></div>
