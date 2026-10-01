@@ -2291,28 +2291,38 @@ function cashEncaisseeMois(p, start, end) {
   }, 0);
 }
 
-// Commissions CLOSÉES sur la période (dateClose dans le mois), filtrées par écosystème
-// si ecoId est fourni. Chaque ligne = un close : date, prospect, email, commission
-// totale du deal, mode de paiement, et montant du deal encaissé ce mois-ci.
+// Commissions ENCAISSÉES sur la période (paiements reçus dans le mois), filtrées par
+// écosystème si ecoId est fourni. Une ligne par prospect ayant encaissé ce mois-ci :
+// la commission est calculée AU PRORATA des échéances reçues (payCommission), ce qui
+// couvre à la fois les nouveaux closes et les récurrents (deals des mois précédents).
 function invoiceLines(annee, mois, ecoId) {
   const start = new Date(annee, mois - 1, 1);
   const end = new Date(annee, mois, 0, 23, 59, 59, 999);
+  const mk = annee + '-' + String(mois).padStart(2, '0');
   const lines = [];
   signedProspects().forEach(p => {
-    if (!p.dateClose) return;
     if (ecoId && p.ecosystemeId !== ecoId) return;
-    const dc = new Date(p.dateClose);
-    if (isNaN(dc) || dc < start || dc > end) return;
+    let comm = 0, encaisse = 0;
+    (p.paiements || []).forEach(pay => {
+      if (!pay.dateRecu) return;
+      const rd = new Date(pay.dateRecu);
+      if (isNaN(rd) || rd < start || rd > end) return;
+      comm += payCommission(p, pay);            // commission au prorata du versement
+      encaisse += Number(pay.montant) || 0;      // cash encaissé ce mois
+    });
+    if (comm <= 0 && encaisse <= 0) return;
+    const recurrent = !(p.dateClose && monthKey(p.dateClose) === mk); // close d'un mois antérieur
     lines.push({
       date: p.dateClose,
       prospect: p.nom,
       email: p.email || '',
-      commission: calcCommission(p) || 0,
+      commission: comm,
       mode: p.modePaiement || '',
-      encaisse: cashEncaisseeMois(p, start, end)
+      encaisse: encaisse,
+      recurrent: recurrent
     });
   });
-  lines.sort((a, b) => new Date(a.date) - new Date(b.date));
+  lines.sort((a, b) => (a.recurrent === b.recurrent) ? 0 : (a.recurrent ? 1 : -1));
   return lines;
 }
 
@@ -2527,11 +2537,12 @@ function invoiceModal() {
     const total = lines.reduce((s, l) => s + l.commission, 0);
     const encaisse = lines.reduce((s, l) => s + l.encaisse, 0);
     if (!lines.length) {
-      box.innerHTML = `${warn}<div class="fact-empty">Aucune commission closée en ${MONTHS_FR[mois - 1]} ${annee} (${scope}).</div>`;
+      box.innerHTML = `${warn}<div class="fact-empty">Aucune commission encaissée en ${MONTHS_FR[mois - 1]} ${annee} (${scope}).</div>`;
       $('#iv-go').disabled = true; return;
     }
-    box.innerHTML = `${warn}<div class="fact-prev-head">${lines.length} close(s) · ${scope} · mode : ${esc(globalMode(lines))}</div>
-      <div class="fact-prev-total">Total commissions : <b>${eur(total)}</b> · encaissé ce mois : <b>${eur(encaisse)}</b></div>`;
+    const nbRec = lines.filter(l => l.recurrent).length, nbNouv = lines.length - nbRec;
+    box.innerHTML = `${warn}<div class="fact-prev-head">${lines.length} prospect(s) encaissé(s) · ${nbNouv} nouveau(x) + ${nbRec} récurrent(s) · ${scope}</div>
+      <div class="fact-prev-total">Commissions (prorata encaissé) : <b>${eur(total)}</b> · cash encaissé : <b>${eur(encaisse)}</b></div>`;
     $('#iv-go').disabled = false;
   };
   $('#iv-client').onchange = refresh; $('#iv-mois').onchange = refresh; $('#iv-annee').onchange = refresh;
@@ -2620,39 +2631,40 @@ async function generateInvoicePDF(facture) {
 
   // Objet
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20);
-  doc.text(`Prestation de closing — commissions ${MONTHS_FR[facture.mois - 1]} ${facture.annee}`, M, y);
+  doc.text(`Prestation de closing — commissions encaissées ${MONTHS_FR[facture.mois - 1]} ${facture.annee}`, M, y);
   y += 10;
 
   const right = 210 - M;
   const cell = (txt, x, opt) => doc.text(String(txt), x, y, opt);
   if (facture.mode === 'detaille') {
-    // Colonnes : Date | Prospect (+ email) | Mode | Encaissé mois | Commission
-    const cMode = 108, cEnc = 150, cComm = right;
+    // Colonnes : Prospect (+ email) | Type | Mode | Encaissé mois | Commission (au prorata)
+    const cType = 92, cMode = 118, cEnc = 150, cComm = right;
     doc.setFillColor(245, 243, 240); doc.rect(M, y - 5, right - M, 8, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80);
-    cell('DATE', M + 2); cell('PROSPECT', M + 24); cell('MODE', cMode); cell('ENCAISSÉ', cEnc, { align: 'right' }); cell('COMMISSION', cComm - 2, { align: 'right' });
+    cell('PROSPECT', M + 2); cell('TYPE', cType); cell('MODE', cMode); cell('ENCAISSÉ', cEnc, { align: 'right' }); cell('COMMISSION', cComm - 2, { align: 'right' });
     y += 7;
     doc.setFont('helvetica', 'normal'); doc.setTextColor(40); doc.setFontSize(8.5);
     facture.lignes.forEach(l => {
       if (y > 258) { doc.addPage(); y = M; }
-      cell(fdate(l.date), M + 2);
-      cell(String(l.prospect).slice(0, 26), M + 24);
-      cell(String(l.mode || '—').slice(0, 12), cMode);
+      cell(String(l.prospect).slice(0, 30), M + 2);
+      cell(l.recurrent ? 'Récurrent' : 'Nouveau', cType);
+      cell(String(l.mode || '—').slice(0, 10), cMode);
       cell(euro(l.encaisse), cEnc, { align: 'right' });
       cell(euro(l.commission), cComm - 2, { align: 'right' });
-      if (l.email) { y += 3.6; doc.setTextColor(150); doc.setFontSize(7); cell(String(l.email).slice(0, 40), M + 24); doc.setTextColor(40); doc.setFontSize(8.5); }
+      if (l.email) { y += 3.6; doc.setTextColor(150); doc.setFontSize(7); cell(String(l.email).slice(0, 40), M + 2); doc.setTextColor(40); doc.setFontSize(8.5); }
       y += 6;
     });
   } else {
+    const nbRec = facture.lignes.filter(l => l.recurrent).length, nbNouv = facture.lignes.length - nbRec;
     doc.setFillColor(245, 243, 240); doc.rect(M, y - 5, right - M, 8, 'F');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(80);
     cell('DÉSIGNATION', M + 2); cell('MONTANT', right - 2, { align: 'right' });
     y += 8; doc.setFont('helvetica', 'normal'); doc.setTextColor(40); doc.setFontSize(9.5);
-    cell(`Commissions de closing — ${facture.lignes.length} vente(s)`, M + 2);
+    cell(`Commissions de closing (prorata encaissé) — ${facture.lignes.length} prospect(s)`, M + 2);
     cell(euro(facture.total), right - 2, { align: 'right' });
     y += 7;
-    cell(`Mode de paiement : ${facture.modeGlobal || '—'}`, M + 2); y += 6;
-    cell(`Montant encaissé ce mois-ci : ${euro(facture.encaisse)}`, M + 2); y += 6;
+    cell(`Dont ${nbNouv} nouveau(x) close(s) + ${nbRec} récurrent(s)`, M + 2); y += 6;
+    cell(`Cash encaissé ce mois-ci : ${euro(facture.encaisse)}`, M + 2); y += 6;
   }
 
   y += 4; doc.setDrawColor(220); doc.line(M, y, right, y); y += 8;
