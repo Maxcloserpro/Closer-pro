@@ -434,6 +434,7 @@ function normalizeProspect(p) {
     telephone: telephone,
     ecosystemeId: p.ecosystemeId || '',
     ecosystemeNom: p.ecosystemeNom || '',
+    source: p.source || '',
     offreId: p.offreId || '',
     offreNom: p.offreNom || p.offre || '',
     offre: p.offre || p.offreNom || '', // alias d'affichage rétro-compatible
@@ -953,6 +954,7 @@ function renderCRM() {
   renderCRMTab();
 }
 function renderCRMTab() {
+  if (!$('#crm-tab')) return; // rien à rafraîchir si la page CRM n'est pas affichée
   if (CRM_TAB === 'agenda') renderAgenda();
   else if (CRM_TAB === 'tous') renderTous();
   else renderPipelineTab();
@@ -1277,6 +1279,7 @@ function prospectForm(existing) {
       <div class="field"><label>Email</label><input class="input" type="email" id="f-email" value="${esc(x.email || '')}" placeholder="prenom@mail.com"></div>
       <div class="field"><label>Téléphone</label><input class="input" type="tel" id="f-tel" value="${esc(x.telephone || '')}" placeholder="06 12 34 56 78"></div>
       <div class="field"><label>Écosystème</label><select class="select" id="f-eco"></select></div>
+      <div class="field"><label>Source</label><select class="select" id="f-source"></select></div>
       <div class="field"><label class="flex between items-center"><span>Offre</span><a href="#" id="f-manage-offres" class="link-accent">Gérer →</a></label><select class="select" id="f-offre"></select></div>
       <div class="field"><label>Mode de paiement</label><select class="select" id="f-mode"></select></div>
       <!-- Prix et taux proviennent de l'offre : champs cachés, alimentés automatiquement -->
@@ -1300,9 +1303,17 @@ function prospectForm(existing) {
     </div>`, { wide: true });
 
   // --- Menus liés Écosystème / Offre ---
-  const ecoSel = $('#f-eco'), offSel = $('#f-offre');
+  const ecoSel = $('#f-eco'), offSel = $('#f-offre'), srcSel = $('#f-source');
   ecoSel.innerHTML = `<option value="">— Aucun —</option>` +
     state.ecosystemes.map(e => `<option value="${e.id}" ${e.id === x.ecosystemeId ? 'selected' : ''}>${esc(e.nom)}</option>`).join('');
+  // Remplit le menu "Source" avec les sources définies sur l'écosystème choisi
+  const fillSources = (keep) => {
+    const eco = ecoById(ecoSel.value);
+    const sources = eco && Array.isArray(eco.sources) ? eco.sources : [];
+    srcSel.innerHTML = `<option value="">— Aucune —</option>` +
+      sources.map(s => `<option value="${esc(s)}" ${s === keep ? 'selected' : ''}>${esc(s)}</option>`).join('');
+    if (keep && !sources.includes(keep)) srcSel.value = ''; // source obsolète si l'écosystème change
+  };
   function fillOffres(keepId) {
     const ecoId = ecoSel.value;
     const list = state.offres.filter(o => o.ecosystemeId === ecoId && (o.actif || o.id === keepId));
@@ -1327,8 +1338,10 @@ function prospectForm(existing) {
   };
   fillOffres(x.offreId);
   fillModes(x.modePaiement);
+  fillSources(x.source);
   ecoSel.onchange = () => {
     fillOffres();
+    fillSources();
     // Une seule offre active dans cet écosystème : aucun choix à faire, on la pré-remplit.
     const actives = state.offres.filter(o => o.ecosystemeId === ecoSel.value && o.actif);
     if (actives.length === 1) { offSel.value = actives[0].id; applyOffre(); }
@@ -1397,6 +1410,7 @@ function prospectForm(existing) {
       // identifiant historique (ex. « @insta ») si ni email ni téléphone ne sont saisis.
       contact: email || telephone || (x.contact || ''),
       ecosystemeId: eco ? eco.id : '', ecosystemeNom: eco ? eco.nom : '',
+      source: $('#f-source').value,
       offreId: off ? off.id : '', offreNom: off ? off.nom : '',
       offre: off ? off.nom : (x.offre || ''),
       modePaiement: $('#f-mode').value,
@@ -1538,16 +1552,20 @@ function openGererOffres() {
 
 function ecoForm(existing) {
   const x = existing || {};
+  const sources = Array.isArray(x.sources) ? x.sources : [];
   openModal(`<h3>${existing ? "Modifier l'écosystème" : 'Nouvel écosystème'}</h3>
     <div class="field"><label>Nom</label><input class="input" id="eco-nom" value="${esc(x.nom || '')}" placeholder="Ex : John Doe Coaching"></div>
-    <div class="field"><label>Description (optionnel)</label><textarea class="textarea" id="eco-desc" rows="3">${esc(x.description || '')}</textarea></div>
+    <div class="field"><label>Description (optionnel)</label><textarea class="textarea" id="eco-desc" rows="2">${esc(x.description || '')}</textarea></div>
+    <div class="field"><label>Sources d'acquisition (séparées par des virgules)</label><input class="input" id="eco-sources" value="${esc(sources.join(', '))}" placeholder="Ex : Ads, Organique, YouTube"></div>
     <div class="modal-actions">${existing ? '<button class="btn btn-danger" id="eco-del">Supprimer</button>' : ''}<button class="btn btn-ghost" id="eco-cancel">Annuler</button><button class="btn btn-primary" id="eco-save">Enregistrer</button></div>`);
   $('#eco-cancel').onclick = ecoCancel;
   $('#eco-save').onclick = () => {
     const nom = $('#eco-nom').value.trim();
     if (!nom) { toast('Le nom est requis'); return; }
-    if (existing) { existing.nom = nom; existing.description = $('#eco-desc').value.trim(); }
-    else { const e = { id: uid(), nom, description: $('#eco-desc').value.trim(), createdAt: nowISO() }; state.ecosystemes.push(e); CURRENT_ECO = e.id; }
+    // Dédoublonne les sources en conservant l'ordre de saisie
+    const srcList = [...new Set($('#eco-sources').value.split(',').map(s => s.trim()).filter(Boolean))];
+    if (existing) { existing.nom = nom; existing.description = $('#eco-desc').value.trim(); existing.sources = srcList; }
+    else { const e = { id: uid(), nom, description: $('#eco-desc').value.trim(), sources: srcList, createdAt: nowISO() }; state.ecosystemes.push(e); CURRENT_ECO = e.id; }
     save(); ecoRerender(); toast(existing ? 'Écosystème mis à jour' : 'Écosystème créé');
   };
   if (existing) $('#eco-del').onclick = () => deleteEcosystemeConfirm(existing);
@@ -2273,15 +2291,16 @@ function cashEncaisseeMois(p, start, end) {
   }, 0);
 }
 
-// Toutes les commissions CLOSÉES sur la période (dateClose dans le mois), tous écosystèmes.
-// Chaque ligne = un close : date, prospect, email, commission totale du deal,
-// mode de paiement, et montant du deal encaissé ce mois-ci.
-function invoiceLines(annee, mois) {
+// Commissions CLOSÉES sur la période (dateClose dans le mois), filtrées par écosystème
+// si ecoId est fourni. Chaque ligne = un close : date, prospect, email, commission
+// totale du deal, mode de paiement, et montant du deal encaissé ce mois-ci.
+function invoiceLines(annee, mois, ecoId) {
   const start = new Date(annee, mois - 1, 1);
   const end = new Date(annee, mois, 0, 23, 59, 59, 999);
   const lines = [];
   signedProspects().forEach(p => {
     if (!p.dateClose) return;
+    if (ecoId && p.ecosystemeId !== ecoId) return;
     const dc = new Date(p.dateClose);
     if (isNaN(dc) || dc < start || dc > end) return;
     lines.push({
@@ -2333,9 +2352,9 @@ function renderFacturation() {
 
   const clientRows = state.clients.length ? state.clients.map(c => `<tr>
       <td class="t-strong" data-label="Client">${esc(c.societe)}</td>
+      <td class="muted" data-label="Écosystème">${c.ecosystemeId ? esc((ecoById(c.ecosystemeId) || {}).nom || '—') : '<span style="color:var(--red)">Non relié</span>'}</td>
       <td class="muted" data-label="Téléphone">${esc(c.telephone || '—')}</td>
       <td class="muted" data-label="Email">${esc(c.email || '—')}</td>
-      <td class="muted" data-label="Ville">${esc(c.ville || '—')}</td>
       <td class="muted" data-label="SIRET">${esc(c.siret || '—')}</td>
       <td class="t-right t-actions" style="white-space:nowrap">
         <button class="btn btn-ghost btn-sm" data-edit-client="${c.id}">Modifier</button>
@@ -2376,7 +2395,7 @@ function renderFacturation() {
     <div class="card mb">
       <div class="flex between items-center" style="margin-bottom:14px"><div class="kpic-label">Mes clients</div><button class="btn btn-ghost btn-sm" id="fact-client-add">${ICONS.plus} Ajouter un client</button></div>
       <div class="table-scroll"><table class="stat-table crm-table">
-        <thead><tr><th>Client</th><th>Téléphone</th><th>Email</th><th>Ville</th><th>SIRET</th><th class="t-right">Actions</th></tr></thead>
+        <thead><tr><th>Client</th><th>Écosystème</th><th>Téléphone</th><th>Email</th><th>SIRET</th><th class="t-right">Actions</th></tr></thead>
         <tbody>${clientRows}</tbody></table></div>
     </div>
 
@@ -2443,9 +2462,12 @@ function profilForm() {
 
 function clientForm(existing) {
   const c = existing || {};
+  const ecoOpts = `<option value="">— Aucun —</option>` +
+    state.ecosystemes.map(e => `<option value="${e.id}" ${e.id === c.ecosystemeId ? 'selected' : ''}>${esc(e.nom)}</option>`).join('');
   openModal(`<h3>${existing ? 'Modifier le client' : 'Nouveau client'}</h3>
     <div class="form-grid">
       <div class="field full"><label>Nom société ou nom / prénom</label><input class="input" id="cl-societe" value="${esc(c.societe || '')}"></div>
+      <div class="field full"><label>Écosystème facturé</label><select class="select" id="cl-eco">${ecoOpts}</select></div>
       <div class="field"><label>Téléphone</label><input class="input" type="tel" id="cl-tel" value="${esc(c.telephone || '')}"></div>
       <div class="field"><label>Email de facturation</label><input class="input" type="email" id="cl-email" value="${esc(c.email || '')}"></div>
       <div class="field full"><label>Adresse</label><input class="input" id="cl-adresse" value="${esc(c.adresse || '')}"></div>
@@ -2458,7 +2480,8 @@ function clientForm(existing) {
     const societe = $('#cl-societe').value.trim();
     if (!societe) { toast('Le nom du client est requis'); return; }
     const data = {
-      societe, telephone: $('#cl-tel').value.trim(), email: $('#cl-email').value.trim(),
+      societe, ecosystemeId: $('#cl-eco').value,
+      telephone: $('#cl-tel').value.trim(), email: $('#cl-email').value.trim(),
       adresse: $('#cl-adresse').value.trim(), cp: $('#cl-cp').value.trim(),
       ville: $('#cl-ville').value.trim(), siret: $('#cl-siret').value.trim()
     };
@@ -2493,26 +2516,31 @@ function invoiceModal() {
   };
 
   const refresh = () => {
+    const c = clientById($('#iv-client').value);
     const mois = Number($('#iv-mois').value), annee = Number($('#iv-annee').value);
     const box = $('#iv-preview');
-    const lines = invoiceLines(annee, mois);
+    const ecoId = c ? c.ecosystemeId : '';
+    const ecoNom = ecoId ? ((ecoById(ecoId) || {}).nom || '') : '';
+    const scope = ecoId ? `écosystème « ${esc(ecoNom)} »` : 'tous écosystèmes';
+    const warn = (c && !ecoId) ? `<div class="import-warn" style="margin-bottom:10px">Ce client n'est relié à aucun écosystème — la facture reprend tous les écosystèmes. Relie-le dans sa fiche pour cibler.</div>` : '';
+    const lines = invoiceLines(annee, mois, ecoId);
     const total = lines.reduce((s, l) => s + l.commission, 0);
     const encaisse = lines.reduce((s, l) => s + l.encaisse, 0);
     if (!lines.length) {
-      box.innerHTML = `<div class="fact-empty">Aucune commission closée en ${MONTHS_FR[mois - 1]} ${annee}.</div>`;
+      box.innerHTML = `${warn}<div class="fact-empty">Aucune commission closée en ${MONTHS_FR[mois - 1]} ${annee} (${scope}).</div>`;
       $('#iv-go').disabled = true; return;
     }
-    box.innerHTML = `<div class="fact-prev-head">${lines.length} close(s) · mode : ${esc(globalMode(lines))}</div>
+    box.innerHTML = `${warn}<div class="fact-prev-head">${lines.length} close(s) · ${scope} · mode : ${esc(globalMode(lines))}</div>
       <div class="fact-prev-total">Total commissions : <b>${eur(total)}</b> · encaissé ce mois : <b>${eur(encaisse)}</b></div>`;
     $('#iv-go').disabled = false;
   };
-  $('#iv-mois').onchange = refresh; $('#iv-annee').onchange = refresh;
+  $('#iv-client').onchange = refresh; $('#iv-mois').onchange = refresh; $('#iv-annee').onchange = refresh;
   refresh();
 
   $('#iv-go').onclick = async () => {
     const c = clientById($('#iv-client').value);
     const mois = Number($('#iv-mois').value), annee = Number($('#iv-annee').value);
-    const lines = invoiceLines(annee, mois);
+    const lines = invoiceLines(annee, mois, c ? c.ecosystemeId : '');
     if (!lines.length) { toast('Aucune commission sur cette période'); return; }
     const total = lines.reduce((s, l) => s + l.commission, 0);
     const encaisse = lines.reduce((s, l) => s + l.encaisse, 0);
@@ -2521,6 +2549,7 @@ function invoiceModal() {
     const facture = {
       id: uid(), numero: num.numero, seq: num.seq, annee, mois,
       clientId: c.id, statut: 'Brouillon',
+      ecosystemeId: c.ecosystemeId || '', ecosystemeNom: c.ecosystemeId ? ((ecoById(c.ecosystemeId) || {}).nom || '') : '',
       mode: $('#iv-mode').value, lignes: lines, total, encaisse, modeGlobal: globalMode(lines),
       createdAt: nowISO(),
       emetteurSnap: { ...state.profil },
