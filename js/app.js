@@ -1649,7 +1649,7 @@ function offreForm(ecoId, existing) {
 /* ==========================================================================
    PAGE — Statistiques
    ========================================================================== */
-const STATS_FILTERS = { preset: 'tout', from: '', to: '', eco: '', offre: '', statut: 'Tous' };
+const STATS_FILTERS = { preset: 'tout', from: '', to: '', eco: '', offre: '', source: '', statut: 'Tous' };
 const STAT_STATUT_MAP = { 'Closés': 'Closé', 'Acompte': 'Acompte', 'Perdus': 'Perdu', 'No show': 'No show', 'Annulés': 'Annulé' };
 
 const statDate = (p) => p.dateClose || p.dateRdv || p.createdAt;
@@ -1666,6 +1666,7 @@ function statsBase() {
   return state.prospects.filter(p => {
     if (f.eco && p.ecosystemeId !== f.eco) return false;
     if (f.offre && p.offreId !== f.offre) return false;
+    if (f.source && (p.source || '') !== f.source) return false;
     if (f.statut !== 'Tous' && p.statut !== STAT_STATUT_MAP[f.statut]) return false;
     return statInPeriod(p);
   });
@@ -1705,9 +1706,20 @@ function statsFilterPool() {
   return state.prospects.filter(p => {
     if (f.eco && p.ecosystemeId !== f.eco) return false;
     if (f.offre && p.offreId !== f.offre) return false;
+    if (f.source && (p.source || '') !== f.source) return false;
     if (f.statut !== 'Tous' && p.statut !== STAT_STATUT_MAP[f.statut]) return false;
     return true;
   });
+}
+
+// Liste des sources disponibles (définies sur les écosystèmes + présentes sur les prospects),
+// restreinte à l'écosystème sélectionné le cas échéant.
+function statsSourceOptions() {
+  const f = STATS_FILTERS;
+  const set = new Set();
+  state.ecosystemes.forEach(e => { if (f.eco && e.id !== f.eco) return; (e.sources || []).forEach(s => set.add(s)); });
+  state.prospects.forEach(p => { if (f.eco && p.ecosystemeId !== f.eco) return; if (p.source) set.add(p.source); });
+  return [...set].sort((a, b) => a.localeCompare(b, 'fr'));
 }
 function last12Months() {
   const out = [], now = new Date();
@@ -1808,6 +1820,31 @@ function renderStats() {
     return `<div class="lr-row"><div class="lr-label">${esc(x.r)}</div><div class="lr-track"><div class="lr-fill" style="width:${Math.round(x.n / reasonMax * 100)}%"></div></div><div class="lr-val">${x.n} · ${pct}%</div></div>`;
   }).join('') : '<div class="muted" style="padding:16px 2px">Aucun prospect perdu sur la période 🎉</div>';
 
+  // ---- Comparaison par source (ignore le filtre source pour comparer toutes les sources) ----
+  const srcBase = state.prospects.filter(p => {
+    if (f.eco && p.ecosystemeId !== f.eco) return false;
+    if (f.offre && p.offreId !== f.offre) return false;
+    return statInPeriod(p);
+  });
+  const srcGroups = {};
+  srcBase.forEach(p => { const s = (p.source || '').trim() || '— Sans source —'; (srcGroups[s] = srcGroups[s] || []).push(p); });
+  const showUpOf = (a) => (a.nbHonored + a.noShow + a.annule) ? Math.round(a.nbHonored / (a.nbHonored + a.noShow + a.annule) * 100) : 0;
+  const srcRows = Object.entries(srcGroups).map(([s, ps]) => ({ source: s, a: statAggregate(ps) })).sort((x, y) => y.a.nb - x.a.nb);
+  const srcRowHTML = (name, a, isTotal) => `<tr class="${isTotal ? 'stat-total' : ''}">
+    <td class="t-strong">${esc(name)}</td>
+    <td class="t-right">${a.nb}</td>
+    <td class="t-right">${showUpOf(a)}%</td>
+    <td class="t-right">${a.nbHonored}</td>
+    <td class="t-right">${a.nbClosed}</td>
+    <td class="t-right">${a.tauxH}%</td>
+    <td class="t-right t-num">${eur(a.caContracte)}</td>
+    <td class="t-right t-num" style="color:var(--rev)">${eur(a.caCollecte)}</td>
+    <td class="t-right t-num" style="color:${C_COMM}">${eur(a.commEnc)}</td>
+  </tr>`;
+  const srcTable = srcRows.length
+    ? srcRows.map(r => srcRowHTML(r.source, r.a, false)).join('') + srcRowHTML('TOTAL', statAggregate(srcBase), true)
+    : '<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">Aucune donnée. Renseigne la source des prospects (via leur fiche).</td></tr>';
+
   // ---- Tableau (une ligne par offre) ----
   const offersToShow = state.offres.filter(o => (!f.eco || o.ecosystemeId === f.eco) && (!f.offre || o.id === f.offre));
   let rows = offersToShow.map(o => ({ offre: o, eco: (ecoById(o.ecosystemeId) || {}).nom || '—', agg: statAggregate(base.filter(p => p.offreId === o.id)) }));
@@ -1867,6 +1904,7 @@ function renderStats() {
       <div class="filters">
         <select class="select" id="st-eco"><option value="">Tous les écosystèmes</option>${state.ecosystemes.map(e => `<option value="${e.id}" ${sel(e.id, f.eco)}>${esc(e.nom)}</option>`).join('')}</select>
         <select class="select" id="st-offre"><option value="">Toutes les offres</option>${offreOpts.map(o => `<option value="${o.id}" ${sel(o.id, f.offre)}>${esc(o.nom)}</option>`).join('')}</select>
+        <select class="select" id="st-source"><option value="">Toutes les sources</option>${statsSourceOptions().map(s => `<option value="${esc(s)}" ${sel(s, f.source)}>${esc(s)}</option>`).join('')}</select>
       </div>
       <div style="margin-top:12px">${periodSelectorHTML(f, ['aujourdhui', '7j', '30j', 'mois', '3mois', '6mois', 'annee', 'tout', 'perso'])}</div>
     </div>
@@ -1898,6 +1936,13 @@ function renderStats() {
     </div>
 
     <div class="card mb">
+      <div class="card-head"><div class="card-title">Comparaison par source d'acquisition</div><div class="card-sub">Toutes les sources côte à côte${f.source ? ' · filtre actif : ' + esc(f.source) : ''}</div></div>
+      <div class="table-scroll"><table class="stat-table"><thead><tr>
+        <th>Source</th><th class="t-right">Prospects</th><th class="t-right">Show-up</th><th class="t-right">RDV honorés</th><th class="t-right">Closes</th><th class="t-right">Taux closing</th><th class="t-right">CA contracté</th><th class="t-right">CA collecté</th><th class="t-right">Commission</th>
+      </tr></thead><tbody>${srcTable}</tbody></table></div>
+    </div>
+
+    <div class="card mb">
       <div class="card-head"><div class="card-title">Détail par offre</div><div class="card-sub">Clique une colonne pour trier</div></div>
       <div class="table-scroll"><table class="stat-table"><thead><tr>${thead}</tr></thead><tbody>${tableRows}</tbody></table></div>
     </div>
@@ -1924,8 +1969,9 @@ function renderStats() {
     </div>`;
 
   bindPeriod($('#page-stats .period-selector'), STATS_FILTERS, renderStats);
-  $('#st-eco').onchange = () => { STATS_FILTERS.eco = $('#st-eco').value; STATS_FILTERS.offre = ''; renderStats(); };
+  $('#st-eco').onchange = () => { STATS_FILTERS.eco = $('#st-eco').value; STATS_FILTERS.offre = ''; STATS_FILTERS.source = ''; renderStats(); };
   $('#st-offre').onchange = () => { STATS_FILTERS.offre = $('#st-offre').value; renderStats(); };
+  $('#st-source').onchange = () => { STATS_FILTERS.source = $('#st-source').value; renderStats(); };
   $$('#page-stats th.sortable').forEach(th => th.onclick = () => {
     const k = th.dataset.sort;
     if (STATS_SORT.col === k) STATS_SORT.dir *= -1;
