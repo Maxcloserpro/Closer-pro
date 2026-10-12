@@ -6,11 +6,11 @@
 
 /* ---------- Constants ---------- */
 
-const STATUSES = ['Appel planifié', 'R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'No show', 'Annulé', 'Disqualifié', 'Perdu'];
+const STATUSES = ['Appel planifié', 'R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'No show', 'Annulé', 'Pas de réponse-Annulé', 'Disqualifié', 'Perdu'];
 const STATUS_COLOR = {
   'Appel planifié': 'blue', 'R2': 'violet', 'Follow-up Court': 'orange', 'Follow-up Long': 'violet',
   'Acompte': 'orange', 'Closé': 'green',
-  'No show': 'gray', 'Annulé': 'gray', 'Disqualifié': 'gray', 'Perdu': 'red'
+  'No show': 'gray', 'Annulé': 'gray', 'Pas de réponse-Annulé': 'gray', 'Disqualifié': 'gray', 'Perdu': 'red'
 };
 const STATUS_VAR = { gray: 'text-3', blue: 'blue', orange: 'orange', green: 'green', red: 'red', violet: 'violet' };
 // Seul "Closé" génère du CA / commissions. "Acompte" = accepté de principe, pas encore payé (aucune valeur financière).
@@ -19,9 +19,11 @@ const SIGNED_STATUSES = ['Closé'];
 // "Appel planifié" exclu car le RDV n'a pas encore eu lieu).
 const HONORED_STATUSES = ['R2', 'Follow-up Court', 'Follow-up Long', 'Acompte', 'Closé', 'Perdu', 'Disqualifié'];
 // Statuts finaux archivables (pas les statuts encore en cours)
-const ARCHIVABLE_STATUSES = ['Closé', 'No show', 'Annulé', 'Disqualifié', 'Perdu'];
-// No-show pour le calcul du show-up : No show + Annulé (RDV planifié mais non honoré).
+const ARCHIVABLE_STATUSES = ['Closé', 'No show', 'Annulé', 'Pas de réponse-Annulé', 'Disqualifié', 'Perdu'];
+// No-show "classiques" pour le calcul du show-up : No show + Annulé (RDV planifié mais non honoré).
 const NO_SHOW_STATUSES = ['No show', 'Annulé'];
+// RDV annulé faute de réponse du prospect : compté comme no-show dans un des deux taux de show-up.
+const NO_RESPONSE_STATUS = 'Pas de réponse-Annulé';
 const LOST_REASONS = ["J'ai besoin d'y réfléchir", 'Pas de budget', 'Mauvais timing', 'Autre'];
 const CRIT_LABELS = {
   intro_cadrage: 'Intro / Cadrage', decouverte: 'Découverte', creusage_douleur: 'Creusage douleur',
@@ -1788,9 +1790,13 @@ function renderStats() {
   const dealMoyenNv = nv.nbCloses ? Math.round(nv.contracte / nv.nbCloses) : 0;
 
   // Taux de show-up = RDV honorés ÷ (RDV honorés + no-shows + annulés)
+  // Deux versions : "hors pas de réponse" (les RDV annulés faute de réponse sont ignorés)
+  // et "pas de réponse incluse" (ils comptent comme no-show au dénominateur).
   const showedUp = base.filter(p => HONORED_STATUSES.includes(p.statut)).length;
   const noShowMiss = base.filter(p => NO_SHOW_STATUSES.includes(p.statut)).length;
-  const showUpRate = (showedUp + noShowMiss) ? Math.round(showedUp / (showedUp + noShowMiss) * 100) : 0;
+  const pasReponse = base.filter(p => p.statut === NO_RESPONSE_STATUS).length;
+  const showUpSans = (showedUp + noShowMiss) ? Math.round(showedUp / (showedUp + noShowMiss) * 100) : 0;
+  const showUpAvec = (showedUp + noShowMiss + pasReponse) ? Math.round(showedUp / (showedUp + noShowMiss + pasReponse) * 100) : 0;
   const disqualifies = base.filter(p => p.statut === 'Disqualifié').length;
   const acomptesEnCours = base.filter(p => p.statut === 'Acompte').length;
 
@@ -1804,6 +1810,7 @@ function renderStats() {
     { label: 'Disqualifié', st: ['Disqualifié'], color: '#9ca3af' },
     { label: 'No-show', st: ['No show'], color: '#DB5050' },
     { label: 'Annulé', st: ['Annulé'], color: '#c9b8a8' },
+    { label: 'Pas de réponse', st: [NO_RESPONSE_STATUS], color: '#a8a29e' },
     { label: 'Non closé', st: ['Appel planifié', 'Perdu'], color: '#64748b' }
   ];
   const callDist = CALL_DIST_DEF.map(c => ({ label: c.label, color: c.color, n: base.filter(p => c.st.includes(p.statut)).length })).filter(c => c.n > 0);
@@ -1919,7 +1926,8 @@ function renderStats() {
           <div class="sb-item"><div class="sb-val">${rates.qualified}%</div><div class="sb-lbl">Closing (RDV qualifié)</div></div>
           <div class="sb-item"><div class="sb-val">${rates.honored}%</div><div class="sb-lbl">Closing (RDV honoré)</div></div>
           <div class="sb-item"><div class="sb-val">${rates.total}%</div><div class="sb-lbl">Closing (global)</div></div>
-          <div class="sb-item"><div class="sb-val">${showUpRate}%</div><div class="sb-lbl">Taux de show-up</div></div>
+          <div class="sb-item"><div class="sb-val">${showUpSans}%</div><div class="sb-lbl">Show-up (hors pas de réponse)</div></div>
+          <div class="sb-item"><div class="sb-val">${showUpAvec}%</div><div class="sb-lbl">Show-up (pas de réponse incluse)</div></div>
           <div class="sb-item"><div class="sb-val">${disqualifies}</div><div class="sb-lbl">Disqualifiés</div></div>
           <div class="sb-item"><div class="sb-val">${acomptesEnCours}</div><div class="sb-lbl">Acomptes en cours</div></div>
         </div>
