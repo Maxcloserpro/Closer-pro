@@ -518,6 +518,14 @@ const monthKey = (iso) => { const dt = new Date(iso); return isNaN(dt) ? '' : dt
 const ecoById = (id) => state.ecosystemes.find(e => e.id === id);
 const offreById = (id) => state.offres.find(o => o.id === id);
 const offresOf = (ecoId) => state.offres.filter(o => o.ecosystemeId === ecoId);
+// Écosystèmes reliés à un client. Supporte le nouveau format (tableau ecosystemeIds)
+// et l'ancien (ecosystemeId unique) pour la rétrocompatibilité des données existantes.
+const clientEcoIds = (c) => {
+  if (!c) return [];
+  if (Array.isArray(c.ecosystemeIds)) return c.ecosystemeIds.filter(Boolean);
+  return c.ecosystemeId ? [c.ecosystemeId] : [];
+};
+const clientEcoNoms = (c) => clientEcoIds(c).map(id => (ecoById(id) || {}).nom || '—');
 
 // ---- Helpers paiements / cash ----
 // Commission d'un versement. Pour un montant fixe, la commission totale du deal
@@ -2349,13 +2357,17 @@ function cashEncaisseeMois(p, start, end) {
 // écosystème si ecoId est fourni. Une ligne par prospect ayant encaissé ce mois-ci :
 // la commission est calculée AU PRORATA des échéances reçues (payCommission), ce qui
 // couvre à la fois les nouveaux closes et les récurrents (deals des mois précédents).
-function invoiceLines(annee, mois, ecoId) {
+// ecoIds : tableau d'écosystèmes à facturer (plusieurs peuvent être regroupés sur un
+// même client, la facture les cumule). Vide/absent = tous les écosystèmes.
+// Accepte aussi un identifiant unique (ancien appel) pour rétrocompatibilité.
+function invoiceLines(annee, mois, ecoIds) {
+  const ids = Array.isArray(ecoIds) ? ecoIds.filter(Boolean) : (ecoIds ? [ecoIds] : []);
   const start = new Date(annee, mois - 1, 1);
   const end = new Date(annee, mois, 0, 23, 59, 59, 999);
   const mk = annee + '-' + String(mois).padStart(2, '0');
   const lines = [];
   signedProspects().forEach(p => {
-    if (ecoId && p.ecosystemeId !== ecoId) return;
+    if (ids.length && !ids.includes(p.ecosystemeId)) return;
     let comm = 0, encaisse = 0;
     (p.paiements || []).forEach(pay => {
       if (!pay.dateRecu) return;
@@ -2416,7 +2428,7 @@ function renderFacturation() {
 
   const clientRows = state.clients.length ? state.clients.map(c => `<tr>
       <td class="t-strong" data-label="Client">${esc(c.societe)}</td>
-      <td class="muted" data-label="Écosystème">${c.ecosystemeId ? esc((ecoById(c.ecosystemeId) || {}).nom || '—') : '<span style="color:var(--red)">Non relié</span>'}</td>
+      <td class="muted" data-label="Écosystèmes">${clientEcoIds(c).length ? esc(clientEcoNoms(c).join(', ')) : '<span style="color:var(--red)">Non relié</span>'}</td>
       <td class="muted" data-label="Téléphone">${esc(c.telephone || '—')}</td>
       <td class="muted" data-label="Email">${esc(c.email || '—')}</td>
       <td class="muted" data-label="SIRET">${esc(c.siret || '—')}</td>
@@ -2459,7 +2471,7 @@ function renderFacturation() {
     <div class="card mb">
       <div class="flex between items-center" style="margin-bottom:14px"><div class="kpic-label">Mes clients</div><button class="btn btn-ghost btn-sm" id="fact-client-add">${ICONS.plus} Ajouter un client</button></div>
       <div class="table-scroll"><table class="stat-table crm-table">
-        <thead><tr><th>Client</th><th>Écosystème</th><th>Téléphone</th><th>Email</th><th>SIRET</th><th class="t-right">Actions</th></tr></thead>
+        <thead><tr><th>Client</th><th>Écosystèmes</th><th>Téléphone</th><th>Email</th><th>SIRET</th><th class="t-right">Actions</th></tr></thead>
         <tbody>${clientRows}</tbody></table></div>
     </div>
 
@@ -2526,12 +2538,14 @@ function profilForm() {
 
 function clientForm(existing) {
   const c = existing || {};
-  const ecoOpts = `<option value="">— Aucun —</option>` +
-    state.ecosystemes.map(e => `<option value="${e.id}" ${e.id === c.ecosystemeId ? 'selected' : ''}>${esc(e.nom)}</option>`).join('');
+  const selected = clientEcoIds(c);
+  const ecoChecks = state.ecosystemes.length
+    ? state.ecosystemes.map(e => `<label class="chk-inline"><input type="checkbox" class="cl-eco" value="${e.id}" ${selected.includes(e.id) ? 'checked' : ''}> ${esc(e.nom)}</label>`).join('')
+    : `<span class="muted">Aucun écosystème. Crée-en d'abord dans l'onglet CRM.</span>`;
   openModal(`<h3>${existing ? 'Modifier le client' : 'Nouveau client'}</h3>
     <div class="form-grid">
       <div class="field full"><label>Nom société ou nom / prénom</label><input class="input" id="cl-societe" value="${esc(c.societe || '')}"></div>
-      <div class="field full"><label>Écosystème facturé</label><select class="select" id="cl-eco">${ecoOpts}</select></div>
+      <div class="field full"><label>Écosystèmes facturés</label><div class="chk-grid" id="cl-eco-wrap" style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)">${ecoChecks}</div><div class="hint">Coche plusieurs écosystèmes pour cumuler leurs commissions sur une même facture.</div></div>
       <div class="field"><label>Téléphone</label><input class="input" type="tel" id="cl-tel" value="${esc(c.telephone || '')}"></div>
       <div class="field"><label>Email de facturation</label><input class="input" type="email" id="cl-email" value="${esc(c.email || '')}"></div>
       <div class="field full"><label>Adresse</label><input class="input" id="cl-adresse" value="${esc(c.adresse || '')}"></div>
@@ -2543,8 +2557,9 @@ function clientForm(existing) {
   $('#cl-save').onclick = () => {
     const societe = $('#cl-societe').value.trim();
     if (!societe) { toast('Le nom du client est requis'); return; }
+    const ecoIds = $$('#cl-eco-wrap .cl-eco:checked').map(i => i.value);
     const data = {
-      societe, ecosystemeId: $('#cl-eco').value,
+      societe, ecosystemeIds: ecoIds, ecosystemeId: ecoIds[0] || '',
       telephone: $('#cl-tel').value.trim(), email: $('#cl-email').value.trim(),
       adresse: $('#cl-adresse').value.trim(), cp: $('#cl-cp').value.trim(),
       ville: $('#cl-ville').value.trim(), siret: $('#cl-siret').value.trim()
@@ -2583,11 +2598,13 @@ function invoiceModal() {
     const c = clientById($('#iv-client').value);
     const mois = Number($('#iv-mois').value), annee = Number($('#iv-annee').value);
     const box = $('#iv-preview');
-    const ecoId = c ? c.ecosystemeId : '';
-    const ecoNom = ecoId ? ((ecoById(ecoId) || {}).nom || '') : '';
-    const scope = ecoId ? `écosystème « ${esc(ecoNom)} »` : 'tous écosystèmes';
-    const warn = (c && !ecoId) ? `<div class="import-warn" style="margin-bottom:10px">Ce client n'est relié à aucun écosystème — la facture reprend tous les écosystèmes. Relie-le dans sa fiche pour cibler.</div>` : '';
-    const lines = invoiceLines(annee, mois, ecoId);
+    const ecoIds = clientEcoIds(c);
+    const ecoNoms = clientEcoNoms(c);
+    const scope = ecoIds.length
+      ? (ecoIds.length === 1 ? `écosystème « ${esc(ecoNoms[0])} »` : `écosystèmes cumulés : ${esc(ecoNoms.join(', '))}`)
+      : 'tous écosystèmes';
+    const warn = (c && !ecoIds.length) ? `<div class="import-warn" style="margin-bottom:10px">Ce client n'est relié à aucun écosystème — la facture reprend tous les écosystèmes. Relie-le dans sa fiche pour cibler.</div>` : '';
+    const lines = invoiceLines(annee, mois, ecoIds);
     const total = lines.reduce((s, l) => s + l.commission, 0);
     const encaisse = lines.reduce((s, l) => s + l.encaisse, 0);
     if (!lines.length) {
@@ -2605,7 +2622,8 @@ function invoiceModal() {
   $('#iv-go').onclick = async () => {
     const c = clientById($('#iv-client').value);
     const mois = Number($('#iv-mois').value), annee = Number($('#iv-annee').value);
-    const lines = invoiceLines(annee, mois, c ? c.ecosystemeId : '');
+    const ecoIds = clientEcoIds(c);
+    const lines = invoiceLines(annee, mois, ecoIds);
     if (!lines.length) { toast('Aucune commission sur cette période'); return; }
     const total = lines.reduce((s, l) => s + l.commission, 0);
     const encaisse = lines.reduce((s, l) => s + l.encaisse, 0);
@@ -2614,7 +2632,8 @@ function invoiceModal() {
     const facture = {
       id: uid(), numero: num.numero, seq: num.seq, annee, mois,
       clientId: c.id, statut: 'Brouillon',
-      ecosystemeId: c.ecosystemeId || '', ecosystemeNom: c.ecosystemeId ? ((ecoById(c.ecosystemeId) || {}).nom || '') : '',
+      ecosystemeIds: ecoIds, ecosystemeNoms: clientEcoNoms(c),
+      ecosystemeId: ecoIds[0] || '', ecosystemeNom: ecoIds.length ? ((ecoById(ecoIds[0]) || {}).nom || '') : '',
       mode: $('#iv-mode').value, lignes: lines, total, encaisse, modeGlobal: globalMode(lines),
       createdAt: nowISO(),
       emetteurSnap: { ...state.profil },
